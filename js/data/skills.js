@@ -189,19 +189,22 @@ export const DEFAULT_LEVELS = {
   dips: 1, rows: 1, legs: 1, lsit: 1,
 };
 
-// Ganzkörper A/B im Wechsel, Handstand-Übung immer zuerst (frische Schultern)
+// Ganzkörper A/B im Wechsel. Jeder Block ist entweder eine einzelne Übung
+// (gerade Sätze) oder ein Supersatz aus zwei Übungen im Wechsel (Drücken/Ziehen).
+// Handstand immer zuerst, solange die Schultern frisch sind.
 export const SESSIONS = {
-  A: { name: 'Ganzkörper A', paths: ['handstand', 'hspu', 'frontlever', 'dips', 'legs', 'lsit'] },
-  B: { name: 'Ganzkörper B', paths: ['handstand', 'planche', 'muscleup', 'rows', 'legs', 'lsit'] },
+  A: { name: 'Ganzkörper A', blocks: [['handstand'], ['hspu', 'frontlever'], ['dips', 'legs'], ['lsit']] },
+  B: { name: 'Ganzkörper B', blocks: [['handstand'], ['planche', 'muscleup'], ['rows', 'legs'], ['lsit']] },
 };
 
+// sec = läuft automatisch als Countdown, reps = mit "Fertig" bestätigen
 export const WARMUP = [
-  { name: 'Handgelenke kreisen & dehnen', dose: '2 Min', cues: 'Im Vierfüßlerstand Handflächen und Handrücken in alle Richtungen belasten. Wichtig für Handstand und Planche!' },
-  { name: 'Arm- und Schulterkreisen', dose: '1 Min', cues: 'Große Kreise vorwärts und rückwärts.' },
-  { name: 'Katze-Kuh', dose: '10×', cues: 'Im Vierfüßlerstand Rücken abwechselnd rund und hohl.' },
-  { name: 'Skapula-Liegestütze', dose: '10×', cues: 'In der Liegestützposition nur die Schulterblätter zusammen und auseinander bewegen.' },
-  { name: 'Aktives Hängen', dose: '2× 20 s', cues: 'An der Stange hängen, Schultern aktiv nach unten ziehen.' },
-  { name: 'Kniebeugen locker', dose: '10×', cues: 'Langsam, tief, Hüfte mobilisieren.' },
+  { name: 'Handgelenke kreisen & dehnen', sec: 90, cues: 'Im Vierfüßlerstand Handflächen und Handrücken in alle Richtungen belasten. Wichtig für Handstand und Planche!' },
+  { name: 'Arm- und Schulterkreisen', sec: 45, cues: 'Große Kreise vorwärts und rückwärts.' },
+  { name: 'Katze-Kuh', reps: 10, cues: 'Im Vierfüßlerstand Rücken abwechselnd rund und hohl.' },
+  { name: 'Skapula-Liegestütze', reps: 10, cues: 'In der Liegestützposition nur die Schulterblätter zusammen und auseinander bewegen.' },
+  { name: 'Aktives Hängen', sec: 20, sets: 2, cues: 'An der Stange hängen, Schultern aktiv nach unten ziehen.' },
+  { name: 'Kniebeugen locker', reps: 10, cues: 'Langsam, tief, Hüfte mobilisieren.' },
 ];
 
 export function getPath(id) {

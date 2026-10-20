@@ -4,12 +4,21 @@ Eine Web-App (PWA) fürs iPhone, die sich wie eine normale App auf den Home-Bild
 
 ## Funktionen
 
-- **Skill-Pfade** mit Stufenleitern: Handstand, Handstand-Push-up, Planche, Front Lever, Klimmzug → Muscle-up, Ring-Dips, Ring-Rudern, Pistol Squat, L-Sit
-- **Adaptiver Plan**: Ganzkörper A/B im Wechsel, 3× pro Woche. Schaffst du in allen Sätzen das obere Ziel, schlägt die App die nächste Stufe vor. Liegst du zweimal unter dem Minimum, schlägt sie eine Stufe zurück vor.
-- **Workout-Modus**: Aufwärmen, Satz-Eingabe, Stoppuhr für Halteübungen (Signalton bei Minimal- und Zielzeit), Pausen-Countdown, Bildschirm bleibt an
-- **Ernährung**: Kalorien- und Eiweißziel aus Körperdaten, Wochenplan mit Rezepten, Portionen werden automatisch angepasst, Gerichte tauschbar, vegetarisch und Reste-Modus optional
-- **Einkaufsliste** aus dem Wochenplan, nach Supermarkt-Abteilungen sortiert, zum Abhaken, mit eigenen Einträgen
-- Offline nutzbar, Hell- und Dunkelmodus, Backup als JSON
+**Training (aufgebaut wie Simple Calisthenics)**
+- **Periodisierung**: Zyklen aus 7 Wochen – 3× Hypertrophie, 3× Kraft, 1× Deload – mit Kalenderansicht und Vorschau jedes Trainingstags
+- **Skill-Pfade** als Progressionsketten: Handstand, Handstand-Push-up, Planche, Front Lever, Klimmzug → Muscle-up, Ring-Dips, Ring-Rudern, Pistol Squat, L-Sit
+- **Supersätze**: Drücken und Ziehen im Wechsel, Handstand als Skill-Block zu Beginn
+- **Konkrete Satz-Ziele** aus dem Verlauf (Doppelprogression). Ziel in allen Sätzen erreicht → Vorschlag für die nächste Stufe, zweimal unter dem Minimum → Vorschlag zum Zurückstufen
+- **Geführter Player**: Aufwärmen, automatische Pausen- und Übungs-Countdowns, Stoppuhr für Halteübungen, Signaltöne, Sprachansage, Übersicht zum Springen, Bildschirm bleibt an
+- **Beweglichkeit**: Cool-down nach jedem Training (rotierend) und eigene Mobility-Einheit
+- **Übungsübersicht**: jede Übung für den Plan an- oder abwählbar (abgewählt → nächstleichtere Variante)
+- **Fortschritt**: Statistik, Sätze pro Woche, Stufen je Skill, Meilensteine, Bestleistungen, Körpergewicht, Trainingsverlauf
+
+**Ernährung**
+- Kalorien- und Eiweißziel aus Körperdaten, Wochenplan mit Rezepten, Portionen automatisch angepasst, Gerichte tauschbar, vegetarisch und Reste-Modus optional
+- Einkaufsliste aus dem Wochenplan, nach Abteilungen sortiert, mit eigenen Einträgen
+
+Offline nutzbar, Hell- und Dunkelmodus, Backup als JSON.
 
 ## Aufs iPhone bringen (GitHub Pages)
 
@@ -29,9 +38,11 @@ npx http-server -c-1 .
 
 | Datei | Inhalt |
 | --- | --- |
-| `js/data/skills.js` | Skill-Pfade, Stufen, Ziele, Trainingseinheiten, Aufwärmen |
+| `js/data/skills.js` | Skill-Pfade, Stufen, Trainingseinheiten (Blöcke/Supersätze), Aufwärmen |
+| `js/data/mobility.js` | Dehn- und Mobilisationsübungen |
 | `js/data/food.js` | Zutaten mit Nährwerten, Rezepte |
-| `js/training.js` | Workout erstellen, auswerten, Stufen anpassen |
+| `js/training.js` | Periodisierung, Satz-Ziele, Workout erstellen und auswerten, Statistik, Kalender |
 | `js/nutrition.js` | Kalorienbedarf, Wochenplan, Einkaufsliste |
-| `js/app.js` | Oberfläche und Navigation |
+| `js/views/*.js` | Ansichten (Heute, Plan, Übungen, Fortschritt, Essen, Profil, Player) |
+| `js/app.js` | Navigation und Ereignisse |
 | `sw.js` | Offline-Cache (bei Änderungen `VERSION` erhöhen) |
