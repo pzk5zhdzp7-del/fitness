@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Calisthenics</title>
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Calisthenics">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar"><h1 id="title">Heute</h1></header>
+  <main id="view"></main>
+  <nav class="tabbar">
+    <a href="#/" data-tab="home"><span>🏠</span>Heute</a>
+    <a href="#/skills" data-tab="skills"><span>🤸</span>Skills</a>
+    <a href="#/food" data-tab="food"><span>🥗</span>Essen</a>
+    <a href="#/shopping" data-tab="shopping"><span>🛒</span>Einkauf</a>
+    <a href="#/profile" data-tab="profile"><span>⚙️</span>Profil</a>
+  </nav>
+  <div id="sheet" class="sheet hidden"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
