@@ -1,7 +1,8 @@
-import { INGREDIENTS, RECIPES, CATEGORIES, getRecipe } from './data/food.js';
+import { CATEGORIES, getRecipe, getIngredient, allRecipes } from './data/food.js';
 import { state, save } from './store.js';
 import { startOfWeek } from './training.js';
 import { isLinked, remotePlan, sharePlan, members, publishMember } from './sync.js';
+import { blockedRecipes, refreshCustom } from './recipes.js';
 
 export const GOALS = {
   lose: { label: 'Abnehmen', delta: -400 },
@@ -26,8 +27,10 @@ export function targets(profile = state.profile) {
 
 export function recipeMacros(recipe, scale = 1) {
   const m = { kcal: 0, p: 0, c: 0, f: 0 };
+  if (!recipe) return m;
   for (const [id, grams] of Object.entries(recipe.items)) {
-    const ing = INGREDIENTS[id];
+    const ing = getIngredient(id);
+    if (!ing) continue;
     const g = (grams * scale) / 100;
     m.kcal += ing.kcal * g;
     m.p += ing.p * g;
@@ -58,9 +61,17 @@ export function dayMacros(day) {
   return total;
 }
 
-function pool(slot) {
-  const s = slot === 'lunch' || slot === 'dinner' ? 'main' : slot;
-  return RECIPES.filter((r) => r.slot === s && (!state.profile.vegetarian || r.veg));
+export function slotKind(slot) {
+  return slot === 'lunch' || slot === 'dinner' ? 'main' : slot;
+}
+
+// Passende Rezepte für eine Mahlzeit; abgewählte nur, wenn sonst nichts übrig bleibt
+export function pool(slot) {
+  const s = slotKind(slot);
+  const all = allRecipes().filter((r) => r.slot === s && (!state.profile.vegetarian || r.veg));
+  const off = blockedRecipes();
+  const on = all.filter((r) => !off.has(r.id));
+  return on.length ? on : all;
 }
 
 // Wählt das am seltensten genutzte Rezept (Zufall bei Gleichstand)
@@ -137,13 +148,36 @@ function adoptPlan(shared) {
   return state.mealPlan;
 }
 
+const SLOTS = ['breakfast', 'lunch', 'dinner'];
+
+// Gelöschte Rezepte im Plan durch passende ersetzen
+function repairPlan(plan) {
+  let fixed = false;
+  const used = {};
+  plan.days.forEach((day) => {
+    for (const slot of SLOTS) {
+      if (!getRecipe(day[slot])) { day[slot] = pick(slot, used, [day.lunch, day.dinner]); fixed = true; }
+    }
+    day.snacks = day.snacks.map((id) => {
+      if (getRecipe(id)) return id;
+      fixed = true;
+      return pick('snack', used, day.snacks);
+    });
+    if (fixed) fitScale(day, plan.kcal || targets().kcal);
+  });
+  return fixed;
+}
+
 export function ensurePlan() {
+  refreshCustom();
   const week = isoDate(startOfWeek(new Date()));
   if (isLinked()) {
     publishMember(targets().kcal);
     const shared = remotePlan();
-    if (shared && shared.weekStart === week && shared.days.every((d) => [d.breakfast, d.lunch, d.dinner, ...d.snacks].every(getRecipe))) {
-      return adoptPlan(shared);
+    if (shared && shared.weekStart === week) {
+      const plan = adoptPlan(shared);
+      if (repairPlan(plan)) { save(); sharePlan(plan); }
+      return plan;
     }
     // Gemeinsamer Stand noch nicht geladen: vorerst lokal planen, aber nichts überschreiben
     if (shared === undefined) {
@@ -153,6 +187,7 @@ export function ensurePlan() {
     return generatePlan();
   }
   if (!state.mealPlan || state.mealPlan.weekStart !== week) generatePlan();
+  else if (repairPlan(state.mealPlan)) save();
   return state.mealPlan;
 }
 
@@ -177,6 +212,16 @@ export function swapMeal(dayIdx, slot, index = 0) {
   sharePlan(state.mealPlan);
 }
 
+// Bestimmtes Gericht für eine Mahlzeit wählen
+export function setMeal(dayIdx, slot, index, id) {
+  const day = state.mealPlan.days[dayIdx];
+  if (slot === 'snack') day.snacks[index] = id;
+  else day[slot] = id;
+  fitScale(day, state.mealPlan.kcal);
+  save();
+  sharePlan(state.mealPlan);
+}
+
 // Einkaufsliste: Summe aller Zutaten der Woche, nach Abteilung sortiert
 export function shoppingList(fromDay = 0) {
   const plan = ensurePlan();
@@ -186,15 +231,16 @@ export function shoppingList(fromDay = 0) {
     // Bei gemeinsamem Plan: Portionen aller Personen zusammenrechnen
     const scale = people.length > 1 ? people.reduce((a, k) => a + scaleFor(day, k), 0) : day.scale;
     for (const meal of dayMeals(day)) {
-      for (const [id, g] of Object.entries(getRecipe(meal.id).items)) {
+      for (const [id, g] of Object.entries(getRecipe(meal.id)?.items || {})) {
         totals[id] = (totals[id] || 0) + g * scale;
       }
     }
   });
   const groups = CATEGORIES.map((cat) => ({ cat, items: [] }));
   for (const [id, grams] of Object.entries(totals)) {
-    const ing = INGREDIENTS[id];
-    groups.find((g) => g.cat === ing.cat).items.push({ id, name: ing.name, amount: formatAmount(ing, grams) });
+    const ing = getIngredient(id);
+    if (!ing) continue;
+    (groups.find((g) => g.cat === ing.cat) || groups[groups.length - 1]).items.push({ id, name: ing.name, amount: formatAmount(ing, grams) });
   }
   groups.forEach((g) => g.items.sort((a, b) => a.name.localeCompare(b.name, 'de')));
   return groups.filter((g) => g.items.length);
@@ -212,8 +258,8 @@ function formatAmount(ing, grams) {
 }
 
 export function scaledItems(recipe, scale) {
-  return Object.entries(recipe.items).map(([id, g]) => {
-    const ing = INGREDIENTS[id];
+  return Object.entries(recipe.items).filter(([id]) => getIngredient(id)).map(([id, g]) => {
+    const ing = getIngredient(id);
     const grams = Math.round((g * scale) / 5) * 5;
     let amount = `${grams} ${ing.unit || 'g'}`;
     if (ing.piece) {

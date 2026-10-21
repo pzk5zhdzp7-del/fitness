@@ -167,7 +167,7 @@ h3 { margin: 0 0 4px; font-size: 17px; }
 label.field { display: block; padding: 10px 16px; border-bottom: 1px solid var(--line); }
 label.field:last-child { border-bottom: 0; }
 label.field span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-input, select {
+input, select, textarea {
   font: inherit;
   color: var(--text);
   background: var(--bg);
@@ -407,3 +407,16 @@ details.levels[open] > summary { border-bottom: 1px solid var(--line); }
 
 /* Gemeinsam planen */
 .invite { word-break: break-all; font-size: 13px; user-select: all; -webkit-user-select: all; }
+
+/* Eigene Rezepte und Übungen */
+textarea { resize: vertical; line-height: 1.4; }
+.rc-item select { flex: 1; min-width: 0; }
+.rc-item input { width: 84px; flex: none; }
+details.card summary { font-weight: 600; cursor: pointer; }
+details.card[open] summary { margin-bottom: 8px; }
+.small.warn { color: var(--warn); margin: 6px 0; }
+.small.warn:empty { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; }
+.chips label { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 14px; }
+.chips input { width: 18px; height: 18px; }
+.cx-level { margin-bottom: 10px; }
