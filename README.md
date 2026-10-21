@@ -12,10 +12,13 @@ Eine Web-App (PWA) fürs iPhone, die sich wie eine normale App auf den Home-Bild
 - **Geführter Player**: Aufwärmen, automatische Pausen- und Übungs-Countdowns, Stoppuhr für Halteübungen, Signaltöne, Sprachansage, Übersicht zum Springen, Bildschirm bleibt an
 - **Beweglichkeit**: Cool-down nach jedem Training (rotierend) und eigene Mobility-Einheit
 - **Übungsübersicht**: jede Übung für den Plan an- oder abwählbar (abgewählt → nächstleichtere Variante)
+- **Eigene Übungen** mit einer oder mehreren Stufen, laufen in Ganzkörper A, B oder beiden mit
 - **Fortschritt**: Statistik, Sätze pro Woche, Stufen je Skill, Meilensteine, Bestleistungen, Körpergewicht, Trainingsverlauf
 
 **Ernährung**
 - Kalorien- und Eiweißziel aus Körperdaten, Wochenplan mit Rezepten, Portionen automatisch angepasst, Gerichte tauschbar, vegetarisch und Reste-Modus optional
+- Alle Rezepte zum Durchblättern, einzeln an- und abwählbar, Gericht für eine Mahlzeit selbst aussuchen
+- Eigene Rezepte und Zutaten (bei gemeinsamem Plan in beiden Apps sichtbar)
 - Einkaufsliste aus dem Wochenplan, nach Abteilungen sortiert, mit eigenen Einträgen
 
 Offline nutzbar, Hell- und Dunkelmodus, Backup als JSON.
@@ -43,6 +46,8 @@ npx http-server -c-1 .
 | `js/data/food.js` | Zutaten mit Nährwerten, Rezepte |
 | `js/training.js` | Periodisierung, Satz-Ziele, Workout erstellen und auswerten, Statistik, Kalender |
 | `js/nutrition.js` | Kalorienbedarf, Wochenplan, Einkaufsliste |
+| `js/recipes.js` | Eigene Rezepte und Zutaten, Rezepte an/aus |
+| `js/custom.js` | Eigene Übungen |
 | `js/views/*.js` | Ansichten (Heute, Plan, Übungen, Fortschritt, Essen, Profil, Player) |
 | `js/app.js` | Navigation und Ereignisse |
 | `sw.js` | Offline-Cache (bei Änderungen `VERSION` erhöhen) |

@@ -207,6 +207,9 @@ export const WARMUP = [
   { name: 'Kniebeugen locker', reps: 10, cues: 'Langsam, tief, Hüfte mobilisieren.' },
 ];
 
+// Gelöschte eigene Übungen: nicht mehr im Plan, aber im Verlauf noch lesbar (befüllt von custom.js)
+export const ARCHIVE = [];
+
 export function getPath(id) {
-  return PATHS.find((p) => p.id === id);
+  return PATHS.find((p) => p.id === id) || ARCHIVE.find((p) => p.id === id);
 }

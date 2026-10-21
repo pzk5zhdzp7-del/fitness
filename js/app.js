@@ -4,12 +4,14 @@ import { buildWorkout, buildMobilityWorkout, startWorkout } from './training.js'
 import { ui, closeSheet, keepAwake, unlockAudio } from './ui.js';
 import { viewHome } from './views/home.js';
 import { viewPlan, planActions } from './views/plan.js';
-import { viewExercises, exerciseActions, exerciseChanges } from './views/exercises.js';
+import { viewExercises, exerciseActions, exerciseChanges, submitExercise } from './views/exercises.js';
+import { applyCustomPaths } from './custom.js';
 import { viewProgress, viewPath, progressActions, addWeight } from './views/progress.js';
-import { viewFood, foodActions, foodChanges, addCustom } from './views/food.js';
+import { viewFood, foodActions, foodChanges, addCustom, submitRecipe } from './views/food.js';
 import { viewProfile, profileActions, profileChange } from './views/profile.js';
 import { viewPlayer, playerActions, beginWorkout, tick } from './views/player.js';
 import { start as startSync, onRemoteChange } from './sync.js';
+import { refreshCustom } from './recipes.js';
 
 const $view = document.getElementById('view');
 const $title = document.getElementById('title');
@@ -26,6 +28,7 @@ const routes = [
 ];
 
 function render() {
+  applyCustomPaths();
   const hash = location.hash || '#/';
   const route = routes.find((r) => r.re.test(hash)) || routes[0];
   const args = hash.match(route.re)?.slice(1) || [];
@@ -97,6 +100,8 @@ document.addEventListener('submit', (e) => {
   e.preventDefault();
   if (form.dataset.form === 'add-custom') addCustom(form);
   if (form.dataset.form === 'weight') addWeight(form);
+  if (form.dataset.form === 'recipe') submitRecipe(form);
+  if (form.dataset.form === 'exercise') submitExercise(form);
 });
 
 setInterval(tick, 250);
@@ -105,6 +110,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') render();
 });
 
+refreshCustom();
 render();
 
 // Änderungen aus der anderen App: neu zeichnen, aber nicht während einer Eingabe
@@ -112,6 +118,7 @@ let syncTimer = null;
 onRemoteChange(() => {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
+    refreshCustom();
     const busy = document.activeElement?.matches('input:not([type=checkbox]):not([type=file]), select, textarea');
     const sheetOpen = !document.getElementById('sheet').classList.contains('hidden');
     if (!busy && !sheetOpen) render();

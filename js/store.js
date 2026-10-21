@@ -43,6 +43,10 @@ const DEFAULTS = {
   activeWorkout: null,
   mealPlan: null,
   shopping: { weekStart: null, checked: {}, custom: [] },
+  customPaths: [], // eigene Übungen (siehe custom.js)
+  customRecipes: [], // eigene Rezepte (siehe recipes.js)
+  customIngredients: {},
+  recipeOff: [], // abgewählte Rezepte, kommen nicht in den Wochenplan
   sync: {}, // { db, code, name, member } = gemeinsamer Ernährungsplan (siehe sync.js)
   syncQueue: [],
 };

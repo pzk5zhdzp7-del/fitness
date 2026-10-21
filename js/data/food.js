@@ -129,6 +129,21 @@ export const RECIPES = [
     items: { hummus: 60, moehren: 100, paprika: 100 }, steps: ['Möhren und Paprika in Sticks schneiden, in Hummus dippen.'] },
 ];
 
+// Eigene Rezepte und Zutaten, befüllt von recipes.js (lokal oder aus dem gemeinsamen Plan)
+export const CUSTOM = { recipes: [], ingredients: {} };
+
+export function allRecipes() {
+  return [...RECIPES, ...CUSTOM.recipes];
+}
+
 export function getRecipe(id) {
-  return RECIPES.find((r) => r.id === id);
+  return RECIPES.find((r) => r.id === id) || CUSTOM.recipes.find((r) => r.id === id);
+}
+
+export function getIngredient(id) {
+  return INGREDIENTS[id] || CUSTOM.ingredients[id];
+}
+
+export function allIngredients() {
+  return { ...INGREDIENTS, ...CUSTOM.ingredients };
 }

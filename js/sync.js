@@ -4,7 +4,8 @@
 //
 // households/<code>/plan     = { weekStart, days: [{ breakfast, lunch, dinner, snacks }], by }
 // households/<code>/shopping = { weekStart, checked: { zutat: true }, custom: { key: { name, done } } }
-// households/<code>/members  = { <memberId>: { name, kcal, app } }
+// households/<code>/members  = { <memberId>: { name, kcal, app, off: [abgewählte Rezepte] } }
+// households/<code>/recipes  = { <id>: eigenes Rezept }, ingredients = { <id>: eigene Zutat }
 import { state, save } from './store.js';
 
 const APP = 'calisthenics';
@@ -143,9 +144,9 @@ export function memberId() {
 export function publishMember(kcal = state.sync.kcal) {
   if (!isLinked()) return;
   state.sync.kcal = kcal;
-  const me = { name: state.sync.name || 'Ich', kcal: kcal || 2000, app: APP };
+  const me = { name: state.sync.name || 'Ich', kcal: kcal || 2000, app: APP, off: state.recipeOff || [] };
   const cur = remote?.members?.[memberId()];
-  if (cur && cur.name === me.name && cur.kcal === me.kcal) return;
+  if (cur && cur.name === me.name && cur.kcal === me.kcal && (cur.off || []).join() === me.off.join()) return;
   write(`/members/${memberId()}`, 'PUT', me);
 }
 
@@ -175,6 +176,7 @@ export async function createHousehold(db, name, plan) {
     checked: state.shopping.checked,
     custom: Object.fromEntries(state.shopping.custom.map((c) => [randomCode(8), { name: c.name, done: !!c.done }])),
   });
+  shareOwnRecipes();
   start();
 }
 
@@ -190,6 +192,7 @@ export async function joinHousehold(invite, name) {
   state.syncQueue = [];
   remote = data;
   changed();
+  shareOwnRecipes();
   start();
 }
 
@@ -234,6 +237,43 @@ export function remotePlan() {
 export function sharePlan(plan) {
   if (isLinked()) write('/plan', 'PUT', planForShare(plan));
 }
+
+/* ---------- Eigene Rezepte ---------- */
+
+// undefined = noch nicht geladen
+export function remoteCustom() {
+  if (remote === undefined) return undefined;
+  return { recipes: Object.values(remote?.recipes || {}), ingredients: remote?.ingredients || {} };
+}
+
+// Beim Verbinden: eigene Rezepte, die der gemeinsame Plan noch nicht kennt, hochladen
+function shareOwnRecipes() {
+  for (const [id, ing] of Object.entries(state.customIngredients || {})) {
+    if (!remote?.ingredients?.[id]) write(`/ingredients/${id}`, 'PUT', ing);
+  }
+  for (const r of state.customRecipes || []) {
+    if (!remote?.recipes?.[r.id]) write(`/recipes/${r.id}`, 'PUT', r);
+  }
+}
+
+export function putRecipe(r) {
+  if (isLinked()) write(`/recipes/${r.id}`, 'PUT', r);
+}
+
+export function deleteRecipe(id) {
+  if (isLinked()) write(`/recipes/${id}`, 'PUT', null);
+}
+
+export function putIngredient(ing) {
+  if (isLinked()) write(`/ingredients/${ing.id}`, 'PUT', ing);
+}
+
+// Rezepte, die irgendwer im gemeinsamen Plan abgewählt hat
+export function othersOff() {
+  return members().filter((m) => !m.me).flatMap((m) => m.off || []);
+}
+
+export { randomCode };
 
 /* ---------- Einkaufsliste ---------- */
 
