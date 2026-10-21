@@ -61,20 +61,118 @@ export function videoLink(name) {
 /* ---------- Sheet (Overlay von unten) ---------- */
 
 const $sheet = document.getElementById('sheet');
+let closeTimer = null;
 
 export function openSheet(html) {
+  clearTimeout(closeTimer);
+  $sheet.classList.remove('closing');
+  $sheet.style.removeProperty('--fade');
   $sheet.innerHTML = `<div class="panel"><div class="grab"></div>${html}</div>`;
   $sheet.classList.remove('hidden');
 }
 
 export function closeSheet() {
+  clearTimeout(closeTimer);
   $sheet.classList.add('hidden');
+  $sheet.classList.remove('closing');
+  $sheet.style.removeProperty('--fade');
   $sheet.innerHTML = '';
 }
 
+// Nach unten herausgleiten lassen, dann schließen
+function dismissSheet() {
+  const panel = $sheet.querySelector('.panel');
+  if (!panel) return closeSheet();
+  $sheet.classList.add('closing');
+  panel.style.transition = 'transform 0.22s ease-in';
+  panel.style.transform = 'translateY(100%)';
+  $sheet.style.setProperty('--fade', '0');
+  closeTimer = setTimeout(closeSheet, 230);
+}
+
 $sheet.addEventListener('click', (e) => {
-  if (e.target === $sheet) closeSheet();
+  if (e.target === $sheet) dismissSheet();
 });
+
+/* Zum Schließen nach unten ziehen. Am Griff oder Kopf geht das immer,
+   im Inhalt nur, wenn er ganz nach oben gescrollt ist. */
+
+let drag = null;
+
+// Liegt zwischen Finger und Panel etwas, das gerade nicht oben steht oder seitlich scrollt?
+function scrolledInside(el, panel) {
+  for (; el && el !== panel; el = el.parentElement) {
+    if (el.matches('input[type=range]')) return true;
+    if (el.scrollTop > 0) return true;
+  }
+  return panel.scrollTop > 0;
+}
+
+$sheet.addEventListener('touchstart', (e) => {
+  const panel = $sheet.querySelector('.panel');
+  if (!panel || e.touches.length !== 1 || $sheet.classList.contains('closing')) return;
+  if (!panel.contains(e.target)) return;
+  const t = e.touches[0];
+  const top = panel.getBoundingClientRect().top;
+  drag = {
+    panel,
+    x: t.clientX,
+    y: t.clientY,
+    dy: 0,
+    mode: null, // null = noch offen, 'drag' = Sheet zieht, 'scroll' = normal scrollen
+    handle: t.clientY - top < 44,
+    blocked: scrolledInside(e.target, panel),
+    samples: [{ y: t.clientY, t: e.timeStamp }],
+  };
+}, { passive: true });
+
+$sheet.addEventListener('touchmove', (e) => {
+  if (!drag) return;
+  const t = e.touches[0];
+  const dx = t.clientX - drag.x;
+  const dy = t.clientY - drag.y;
+  if (!drag.mode) {
+    // Die erste Bewegung entscheidet: iOS lässt sich nur hier vom Scrollen abhalten
+    if (dx === 0 && dy === 0) return;
+    const down = dy > 0 && dy >= Math.abs(dx);
+    drag.mode = down && (drag.handle || !drag.blocked) ? 'drag' : 'scroll';
+    if (drag.mode === 'drag') {
+      drag.y = t.clientY; // ab hier ohne Sprung folgen
+      drag.panel.style.transition = 'none';
+    }
+  }
+  if (drag.mode !== 'drag') return;
+  e.preventDefault();
+  const raw = t.clientY - drag.y;
+  // nach oben nur mit Widerstand
+  drag.dy = raw >= 0 ? raw : -Math.pow(-raw, 0.7);
+  drag.panel.style.transform = `translateY(${drag.dy}px)`;
+  const h = drag.panel.offsetHeight || 1;
+  $sheet.style.setProperty('--fade', String(Math.max(0, 1 - Math.max(0, drag.dy) / h)));
+  drag.samples.push({ y: t.clientY, t: e.timeStamp });
+  if (drag.samples.length > 5) drag.samples.shift();
+}, { passive: false });
+
+function endDrag() {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  if (d.mode !== 'drag') return;
+  const a = d.samples[0];
+  const b = d.samples[d.samples.length - 1];
+  const v = b.t > a.t ? (b.y - a.y) / (b.t - a.t) : 0; // px pro ms
+  const h = d.panel.offsetHeight;
+  if (d.dy > Math.min(140, h * 0.35) || (v > 0.5 && d.dy > 20)) {
+    dismissSheet();
+  } else {
+    d.panel.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2)';
+    d.panel.style.transform = '';
+    $sheet.style.removeProperty('--fade');
+  }
+}
+
+$sheet.addEventListener('touchend', endDrag);
+$sheet.addEventListener('touchcancel', endDrag);
 
 /* ---------- Ton, Sprache, Bildschirm ---------- */
 
