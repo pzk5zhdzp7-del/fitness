@@ -1,9 +1,11 @@
 // Ernährung: Wochenplan, Rezepte und Einkaufsliste
-import { state, save } from '../store.js';
 import { getRecipe } from '../data/food.js';
 import {
   targets, recipeMacros, dayMeals, dayMacros, ensurePlan, generatePlan, swapMeal, shoppingList, scaledItems,
 } from '../nutrition.js';
+import {
+  isLinked, members, shoppingState, setChecked, addCustomItem, setCustomDone, delCustomItem, resetChecks,
+} from '../sync.js';
 import { ui, esc, n0, todayIdx, WEEKDAYS, WEEK_ORDER, openSheet, rerender } from '../ui.js';
 
 export function viewFood() {
@@ -47,19 +49,15 @@ function plan() {
       </div>
     </div>
     <div class="list">${meals}</div>
-    <p class="small muted">Die Portionsgrößen werden automatisch an dein Kalorienziel angepasst. Mit 🔄 tauschst du ein Gericht aus.</p>
+    <p class="small muted">Die Portionsgrößen werden automatisch an dein Kalorienziel angepasst. Mit 🔄 tauschst du ein Gericht aus.${isLinked() ? ' Der Plan ist gemeinsam: Änderungen sieht auch die andere App.' : ''}</p>
     <button class="btn secondary block" data-action="new-plan">Neuen Wochenplan erstellen</button>`;
 }
 
 function shopping() {
   const p = ensurePlan();
-  if (state.shopping.weekStart !== p.weekStart) {
-    state.shopping.weekStart = p.weekStart;
-    state.shopping.checked = {};
-    save();
-  }
+  const shop = shoppingState(p.weekStart);
   const groups = shoppingList(ui.shopFromToday ? todayIdx() : 0);
-  const checked = state.shopping.checked;
+  const checked = shop.checked;
 
   const list = groups.map((g) => `
     <h2>${g.cat}</h2>
@@ -68,17 +66,23 @@ function shopping() {
         <input type="checkbox" data-action="check" data-id="${i.id}" ${checked[i.id] ? 'checked' : ''}>
         <span class="grow name">${esc(i.name)}</span><span class="amount">${i.amount}</span></label>`).join('')}</div>`).join('');
 
-  const custom = state.shopping.custom.map((c, i) => `
+  const custom = shop.custom.map((c) => `
     <div class="check-row ${c.done ? 'checked' : ''}">
-      <input type="checkbox" data-action="check-custom" data-idx="${i}" ${c.done ? 'checked' : ''}>
+      <input type="checkbox" data-action="check-custom" data-key="${c.key}" ${c.done ? 'checked' : ''}>
       <span class="grow name">${esc(c.name)}</span>
-      <button class="btn ghost small" data-action="del-custom" data-idx="${i}" aria-label="Löschen">✕</button></div>`).join('');
+      <button class="btn ghost small" data-action="del-custom" data-key="${c.key}" aria-label="Löschen">✕</button></div>`).join('');
+
+  const people = isLinked() ? members() : [];
+  const shared = people.length > 1
+    ? `<div class="card small">👫 Gemeinsame Liste für ${people.map((m) => esc(m.name)).join(' und ')}. Mengen für alle zusammen, Häkchen sehen alle sofort.</div>`
+    : '';
 
   return `
     <div class="daytabs small-tabs">
       <button class="${ui.shopFromToday ? '' : 'on'}" data-action="shop-range" data-v="0">Ganze Woche</button>
       <button class="${ui.shopFromToday ? 'on' : ''}" data-action="shop-range" data-v="1">Ab heute</button>
     </div>
+    ${shared}
     ${list}
     <h2>Eigene Einträge</h2>
     <div class="list">
@@ -139,27 +143,22 @@ export const foodActions = {
     rerender();
   },
   'reset-checks'() {
-    state.shopping.checked = {};
-    state.shopping.custom = state.shopping.custom.filter((c) => !c.done);
-    save();
+    resetChecks();
     rerender();
   },
   'del-custom'(el) {
-    state.shopping.custom.splice(Number(el.dataset.idx), 1);
-    save();
+    delCustomItem(el.dataset.key);
     rerender();
   },
 };
 
 export const foodChanges = {
   check(el) {
-    state.shopping.checked[el.dataset.id] = el.checked;
-    save();
+    setChecked(el.dataset.id, el.checked);
     el.closest('.check-row').classList.toggle('checked', el.checked);
   },
   'check-custom'(el) {
-    state.shopping.custom[Number(el.dataset.idx)].done = el.checked;
-    save();
+    setCustomDone(el.dataset.key, el.checked);
     el.closest('.check-row').classList.toggle('checked', el.checked);
   },
 };
@@ -167,8 +166,7 @@ export const foodChanges = {
 export function addCustom(form) {
   const name = form.item.value.trim();
   if (!name) return;
-  state.shopping.custom.push({ name, done: false });
-  save();
+  addCustomItem(name);
   rerender();
   document.querySelector('[data-form="add-custom"] input')?.focus();
 }

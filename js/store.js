@@ -43,6 +43,8 @@ const DEFAULTS = {
   activeWorkout: null,
   mealPlan: null,
   shopping: { weekStart: null, checked: {}, custom: [] },
+  sync: {}, // { db, code, name, member } = gemeinsamer Ernährungsplan (siehe sync.js)
+  syncQueue: [],
 };
 
 function clone(v) {

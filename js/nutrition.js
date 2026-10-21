@@ -1,6 +1,7 @@
 import { INGREDIENTS, RECIPES, CATEGORIES, getRecipe } from './data/food.js';
 import { state, save } from './store.js';
 import { startOfWeek } from './training.js';
+import { isLinked, remotePlan, sharePlan, members, publishMember } from './sync.js';
 
 export const GOALS = {
   lose: { label: 'Abnehmen', delta: -400 },
@@ -73,10 +74,14 @@ function pick(slot, used, exclude = []) {
   return choice.id;
 }
 
+// Portionsfaktor, damit der Tag zum Kalorienziel passt
+export function scaleFor(day, kcalTarget) {
+  const base = dayMacros({ ...day, scale: 1 }).kcal;
+  return Math.round(Math.max(0.7, Math.min(1.6, kcalTarget / base)) * 20) / 20;
+}
+
 function fitScale(day, kcalTarget) {
-  day.scale = 1;
-  const base = dayMacros(day).kcal;
-  day.scale = Math.round(Math.max(0.7, Math.min(1.6, kcalTarget / base)) * 20) / 20;
+  day.scale = scaleFor(day, kcalTarget);
 }
 
 export function isoDate(d) {
@@ -84,7 +89,7 @@ export function isoDate(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export function generatePlan() {
+export function generatePlan({ share = true } = {}) {
   const { kcal } = targets();
   const used = {};
   const days = [];
@@ -108,13 +113,57 @@ export function generatePlan() {
   }
   state.mealPlan = { weekStart: isoDate(startOfWeek(new Date())), kcal, days };
   save();
+  if (share) sharePlan(state.mealPlan);
+  return state.mealPlan;
+}
+
+// Gemeinsamen Plan übernehmen, Portionen nach dem eigenen Kalorienziel
+function adoptPlan(shared) {
+  const { kcal } = targets();
+  const ids = (p) => JSON.stringify(p.days.map((d) => [d.breakfast, d.lunch, d.dinner, d.snacks]));
+  const cur = state.mealPlan;
+  if (cur && cur.weekStart === shared.weekStart && cur.kcal === kcal && ids(cur) === ids(shared)) return cur;
+  state.mealPlan = {
+    weekStart: shared.weekStart,
+    kcal,
+    by: shared.by,
+    days: shared.days.map((d) => {
+      const day = { breakfast: d.breakfast, lunch: d.lunch, dinner: d.dinner, snacks: [...d.snacks], scale: 1 };
+      fitScale(day, kcal);
+      return day;
+    }),
+  };
+  save();
   return state.mealPlan;
 }
 
 export function ensurePlan() {
   const week = isoDate(startOfWeek(new Date()));
+  if (isLinked()) {
+    publishMember(targets().kcal);
+    const shared = remotePlan();
+    if (shared && shared.weekStart === week && shared.days.every((d) => [d.breakfast, d.lunch, d.dinner, ...d.snacks].every(getRecipe))) {
+      return adoptPlan(shared);
+    }
+    // Gemeinsamer Stand noch nicht geladen: vorerst lokal planen, aber nichts überschreiben
+    if (shared === undefined) {
+      if (!state.mealPlan || state.mealPlan.weekStart !== week) generatePlan({ share: false });
+      return state.mealPlan;
+    }
+    return generatePlan();
+  }
   if (!state.mealPlan || state.mealPlan.weekStart !== week) generatePlan();
   return state.mealPlan;
+}
+
+// Kalorienziele aller Personen, für die eingekauft wird
+export function peopleKcal() {
+  const own = targets().kcal;
+  if (!isLinked()) return [own];
+  const ms = members();
+  const list = ms.map((m) => (m.me ? own : m.kcal || own));
+  if (!ms.some((m) => m.me)) list.push(own);
+  return list;
 }
 
 export function swapMeal(dayIdx, slot, index = 0) {
@@ -125,16 +174,20 @@ export function swapMeal(dayIdx, slot, index = 0) {
   else day[slot] = id;
   fitScale(day, state.mealPlan.kcal);
   save();
+  sharePlan(state.mealPlan);
 }
 
 // Einkaufsliste: Summe aller Zutaten der Woche, nach Abteilung sortiert
 export function shoppingList(fromDay = 0) {
   const plan = ensurePlan();
+  const people = peopleKcal();
   const totals = {};
   plan.days.slice(fromDay).forEach((day) => {
+    // Bei gemeinsamem Plan: Portionen aller Personen zusammenrechnen
+    const scale = people.length > 1 ? people.reduce((a, k) => a + scaleFor(day, k), 0) : day.scale;
     for (const meal of dayMeals(day)) {
       for (const [id, g] of Object.entries(getRecipe(meal.id).items)) {
-        totals[id] = (totals[id] || 0) + g * day.scale;
+        totals[id] = (totals[id] || 0) + g * scale;
       }
     }
   });

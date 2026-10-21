@@ -404,3 +404,6 @@ input.switch:checked::after { transform: translateX(20px); }
 details.levels { margin: 0; border-top: 1px solid var(--line); }
 details.levels > summary { padding: 10px 16px; font-size: 14px; }
 details.levels[open] > summary { border-bottom: 1px solid var(--line); }
+
+/* Gemeinsam planen */
+.invite { word-break: break-all; font-size: 13px; user-select: all; -webkit-user-select: all; }
