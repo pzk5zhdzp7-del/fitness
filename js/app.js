@@ -9,6 +9,7 @@ import { viewProgress, viewPath, progressActions, addWeight } from './views/prog
 import { viewFood, foodActions, foodChanges, addCustom } from './views/food.js';
 import { viewProfile, profileActions, profileChange } from './views/profile.js';
 import { viewPlayer, playerActions, beginWorkout, tick } from './views/player.js';
+import { start as startSync, onRemoteChange } from './sync.js';
 
 const $view = document.getElementById('view');
 const $title = document.getElementById('title');
@@ -105,6 +106,18 @@ document.addEventListener('visibilitychange', () => {
 });
 
 render();
+
+// Änderungen aus der anderen App: neu zeichnen, aber nicht während einer Eingabe
+let syncTimer = null;
+onRemoteChange(() => {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    const busy = document.activeElement?.matches('input:not([type=checkbox]):not([type=file]), select, textarea');
+    const sheetOpen = !document.getElementById('sheet').classList.contains('hidden');
+    if (!busy && !sheetOpen) render();
+  }, 150);
+});
+startSync();
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

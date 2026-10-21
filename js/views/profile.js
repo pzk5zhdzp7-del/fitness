@@ -2,8 +2,63 @@
 import { state, save, exportData, importData, resetAll } from '../store.js';
 import { PATHS } from '../data/skills.js';
 import { currentLevel, setLevel } from '../training.js';
-import { targets, dayMacros, GOALS, ACTIVITY } from '../nutrition.js';
-import { esc, n0, WEEKDAYS, WEEK_ORDER, rerender } from '../ui.js';
+import { targets, dayMacros, ensurePlan, GOALS, ACTIVITY } from '../nutrition.js';
+import { esc, n0, WEEKDAYS, WEEK_ORDER, openSheet, closeSheet, rerender } from '../ui.js';
+import {
+  isLinked, syncStatus, members, inviteText, createHousehold, joinHousehold, unlink, validDbUrl,
+} from '../sync.js';
+
+const STATUS = { online: '🟢 verbunden', connecting: '🟡 verbindet …', offline: '⚪️ offline, Änderungen werden nachgeholt', error: '🔴 Verbindung gestört', off: '⚪️ getrennt' };
+
+function syncSection() {
+  if (isLinked()) {
+    const ms = members();
+    return `
+    <div class="list">
+      <div class="row"><div class="grow">Status</div><div class="small">${STATUS[syncStatus.value]}</div></div>
+      ${ms.map((m) => `<div class="row"><span class="icon">${m.app === 'gym' ? '🏋️‍♀️' : '🤸'}</span><div class="grow">${esc(m.name)}${m.me ? ' <span class="pill">du</span>' : ''}</div><div class="small muted">${n0(m.kcal)} kcal</div></div>`).join('')}
+      <button class="row" data-action="sync-invite"><span class="grow">Einladung für die andere App</span><span class="chev">›</span></button>
+      <button class="row" data-action="sync-unlink" style="color:#dc2626"><span class="grow">Verbindung trennen</span></button>
+    </div>
+    <p class="small muted">Wochenplan und Einkaufsliste sind gemeinsam. Die Portionen rechnet jede App nach dem eigenen Kalorienziel, die Einkaufsliste enthält die Mengen für alle.</p>`;
+  }
+  return `
+    <p class="small muted" style="margin-top:0">Teile Wochenplan und Einkaufsliste live mit einer zweiten App, z. B. der Gym-App deiner Freundin. Dafür braucht es einmalig einen kostenlosen Firebase-Speicher (siehe Anleitung).</p>
+    <div class="list">
+      <button class="row" data-action="sync-join"><span class="icon">📩</span><span class="grow">Einladung einfügen</span><span class="chev">›</span></button>
+      <button class="row" data-action="sync-create"><span class="icon">✨</span><span class="grow">Neuen gemeinsamen Plan anlegen</span><span class="chev">›</span></button>
+    </div>`;
+}
+
+function syncForm(kind) {
+  const name = state.sync?.name || '';
+  const field = kind === 'join'
+    ? '<label class="field"><span>Einladung (aus der anderen App kopiert)</span><input id="sync-invite" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…firebasedatabase.app#…"></label>'
+    : '<label class="field"><span>Adresse der Firebase-Datenbank</span><input id="sync-db" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://name-default-rtdb.europe-west1.firebasedatabase.app"></label>';
+  openSheet(`<h3>${kind === 'join' ? 'Einladung einfügen' : 'Gemeinsamen Plan anlegen'}</h3>
+    <p class="small muted">${kind === 'join' ? 'Der aktuelle Wochenplan wird durch den gemeinsamen ersetzt.' : 'Dein aktueller Wochenplan und deine Einkaufsliste werden zum gemeinsamen Plan.'}</p>
+    <div class="list">
+      <label class="field"><span>Dein Name (sieht die andere Person)</span><input id="sync-name" value="${esc(name)}" autocomplete="off"></label>
+      ${field}
+    </div>
+    <p class="small" id="sync-error" style="color:#dc2626"></p>
+    <button class="btn block" data-action="sync-${kind}-go">${kind === 'join' ? 'Verbinden' : 'Anlegen'}</button>
+    <button class="btn secondary block" data-action="close-sheet" style="margin-top:8px">Abbrechen</button>`);
+}
+
+async function runSync(fn) {
+  const err = document.getElementById('sync-error');
+  const name = document.getElementById('sync-name').value.trim() || 'Ich';
+  try {
+    err.textContent = '';
+    await fn(name);
+    closeSheet();
+    rerender();
+  } catch (e) {
+    err.textContent = e.message === 'Failed to fetch' ? 'Keine Verbindung zur Datenbank. Adresse prüfen?' : e.message;
+  }
+}
+
 
 export function viewProfile() {
   const p = state.profile;
@@ -52,6 +107,9 @@ export function viewProfile() {
     </div>
     <p class="small muted">Diese beiden Optionen gelten ab dem nächsten neuen Wochenplan.</p>
 
+    <h2>Gemeinsam planen</h2>
+    ${syncSection()}
+
     <h2>Daten</h2>
     <div class="list">
       <button class="row" data-action="export"><span class="grow">Backup exportieren</span><span class="chev">›</span></button>
@@ -95,6 +153,37 @@ export const profileActions = {
     a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  },
+  'sync-create'() {
+    syncForm('create');
+  },
+  'sync-join'() {
+    syncForm('join');
+  },
+  'sync-create-go'() {
+    runSync((name) => {
+      const db = document.getElementById('sync-db').value.trim();
+      if (!validDbUrl(db)) throw new Error('Das sieht nicht nach einer Firebase-Adresse aus (https://….firebasedatabase.app).');
+      return createHousehold(db, name, ensurePlan());
+    });
+  },
+  'sync-join-go'() {
+    runSync((name) => joinHousehold(document.getElementById('sync-invite').value, name));
+  },
+  async 'sync-invite'() {
+    const text = inviteText();
+    if (navigator.share) {
+      try { await navigator.share({ text }); return; } catch { /* abgebrochen */ }
+    }
+    try { await navigator.clipboard.writeText(text); } catch { /* nicht erlaubt */ }
+    openSheet(`<h3>Einladung</h3><p class="small muted">Diesen Text in der anderen App unter Profil → Gemeinsam planen → Einladung einfügen eintragen.</p>
+      <div class="card"><code class="invite">${esc(text)}</code></div>
+      <button class="btn block" data-action="close-sheet">Fertig</button>`);
+  },
+  'sync-unlink'() {
+    if (!confirm('Verbindung trennen? Plan und Einkaufsliste bleiben auf diesem Gerät, werden aber nicht mehr geteilt.')) return;
+    unlink();
+    rerender();
   },
   reset() {
     if (!confirm('Wirklich alle Daten (Trainings, Stufen, Profil) löschen?')) return;

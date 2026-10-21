@@ -1,6 +1,6 @@
 // Offline-Cache. Bei jeder Änderung an der App VERSION erhöhen,
 // damit das iPhone die neuen Dateien lädt.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const FILES = [
   './',
   'index.html',
@@ -10,6 +10,7 @@ const FILES = [
   'js/store.js',
   'js/training.js',
   'js/nutrition.js',
+  'js/sync.js',
   'js/data/skills.js',
   'js/data/food.js',
   'js/data/mobility.js',
