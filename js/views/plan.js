@@ -5,7 +5,7 @@ import {
   PHASES, CYCLE, phaseInfo, calendarDays, dateOnly, buildWorkout, estimateMinutes, restartCycle,
 } from '../training.js';
 import { esc, fmtDate, unitOf, openSheet, rerender } from '../ui.js';
-import { activitiesOn, activityRow, calendarMark } from '../activity.js';
+import { activitiesOn, activityRow, calendarMark, activityButton, isoDay } from '../activity.js';
 
 const DAY = 86400000;
 
@@ -68,6 +68,7 @@ function dayDetails(dateIso, key) {
 
   const acts = activitiesOn(date);
   if (acts.length) body += `<h2>Anderes Training</h2><div class="list">${acts.map((a) => activityRow(a, false)).join('')}</div>`;
+  const notFuture = dateOnly(date) <= dateOnly(new Date());
 
   if (key) {
     const w = buildWorkout(key, phase.key);
@@ -90,6 +91,7 @@ function dayDetails(dateIso, key) {
 
   openSheet(`<h3>${fmtDate(date, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>
     <div class="small muted">${phase.name} · Woche ${phase.cycleWeek}/7</div>${body}
+    ${notFuture ? `<div style="margin-top:10px">${activityButton('🏃 Anderes Training an diesem Tag', isoDay(date))}</div>` : ''}
     <button class="btn secondary block" data-action="close-sheet" style="margin-top:10px">Schließen</button>`);
 }
 

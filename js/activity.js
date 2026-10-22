@@ -56,6 +56,7 @@ export function configureActivity({ context }) {
 
 let pending = []; // von Claude erkannte, noch nicht gespeicherte Einträge
 let lastText = '';
+let lastDate = ''; // vorgewählter Tag (JJJJ-MM-TT), leer = heute
 
 function apiKey() {
   try { return localStorage.getItem(KEY_STORE) || ''; } catch { return ''; }
@@ -126,8 +127,8 @@ export function activityList(n = 10) {
   return sorted(activities()).slice(-n).reverse().map((a) => activityRow(a)).join('');
 }
 
-export function activityButton(label = '🏃 Anderes Training eintragen') {
-  return `<button class="btn secondary block" data-action="act-start">${label}</button>`;
+export function activityButton(label = '🏃 Anderes Training eintragen', date = '') {
+  return `<button class="btn secondary block" data-action="act-start" ${date ? `data-date="${date}"` : ''}>${label}</button>`;
 }
 
 export function calendarMark(date) {
@@ -164,7 +165,11 @@ export function kcalNote(date = new Date()) {
 
 /* ---------- Anfrage an Claude ---------- */
 
-function promptText(text) {
+function dayLabel(iso) {
+  return parseDay(iso).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function promptText(text, day = isoDay()) {
   const today = new Date();
   const p = state.profile;
   return `Ich nutze eine Trainings-App mit festem Plan. Ich beschreibe dir, was ich zusätzlich an Sport oder Bewegung gemacht habe. Mach daraus Einträge für die App.
@@ -179,7 +184,7 @@ Antworte nur mit diesem JSON, ohne weiteren Text:
 {"aktivitaeten": [{"name": "kurzer Name auf Deutsch, z. B. Fußball", "emoji": "⚽", "datum": "JJJJ-MM-TT", "minuten": 0, "intensitaet": "leicht | mittel | hart", "kcal": 0, "belastung": {"beine": 0, "oberkoerper": 0, "rumpf": 0, "ausdauer": 0}, "tipp": "1 bis 2 Sätze"}]}
 
 Regeln:
-- Eine Aktivität pro Eintrag. Steht kein Tag dabei, nimm heute.
+- Eine Aktivität pro Eintrag. Steht kein Tag dabei, war es am ${day === isoDay() ? 'heute' : `${dayLabel(day)} (${day})`}. Ein Tag in der Beschreibung (z. B. „gestern“) gilt vorrangig.
 - kcal: zusätzlich verbrauchte Kalorien über dem Ruheumsatz, realistisch für mich geschätzt.
 - belastung je Bereich: 0 = gar nicht, 1 = etwas, 2 = deutlich, 3 = stark.
 - tipp: was das konkret für mein nächstes Training im Plan bedeutet (z. B. normal trainieren, Beine etwas leichter, einen Tag Pause). Kurz und auf Deutsch, per Du.`;
@@ -190,12 +195,14 @@ function error(msg) {
   if (el) el.textContent = msg;
 }
 
-function start(text = '') {
+function start(text = '', date = '') {
+  lastDate = clampDay(date || isoDay());
   const hasKey = !!apiKey();
   openSheet(`
     <h3>🏃 Anderes Training</h3>
     <p class="small muted">Beschreib einfach, was du gemacht hast, zum Beispiel „Gestern 90 Minuten Fußball, heute 30 Minuten locker joggen“. Claude macht daraus Einträge für Verlauf und Kalender und sagt dir, was das für dein nächstes Training heißt.</p>
     <div class="list">
+      <label class="field"><span>Wann?</span><input id="act-date" type="date" max="${isoDay()}" value="${lastDate}"></label>
       <label class="field"><span>Was hast du gemacht?</span><textarea id="act-text" rows="3" placeholder="z. B. 2 Stunden Bouldern, war ziemlich anstrengend">${esc(text)}</textarea></label>
     </div>
     <p class="small warn" id="act-error"></p>
@@ -213,6 +220,8 @@ function start(text = '') {
 }
 
 function currentText() {
+  const d = document.getElementById('act-date')?.value;
+  if (d) lastDate = clampDay(d);
   const t = document.getElementById('act-text')?.value.trim() || '';
   if (t) lastText = t;
   return t;
@@ -222,7 +231,7 @@ async function share() {
   const text = currentText();
   if (!text) return error('Beschreib zuerst, was du gemacht hast.');
   error('');
-  const prompt = promptText(text);
+  const prompt = promptText(text, lastDate);
   try { await navigator.clipboard.writeText(prompt); } catch { /* nicht schlimm */ }
   if (navigator.share) {
     try {
@@ -256,7 +265,7 @@ async function ask(btn) {
         max_tokens: 4000,
         fallbacks: 'default',
         output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },
-        messages: [{ role: 'user', content: promptText(text) }],
+        messages: [{ role: 'user', content: promptText(text, lastDate) }],
       }),
     });
     const body = await res.json().catch(() => ({}));
@@ -380,8 +389,8 @@ export function submitActivity(form) {
 }
 
 export const activityActions = {
-  'act-start'() {
-    start(lastText);
+  'act-start'(el) {
+    start(el.dataset.date ? '' : lastText, el.dataset.date || '');
   },
   'act-share'() {
     share();
@@ -404,7 +413,7 @@ export const activityActions = {
   },
   'act-manual'() {
     currentText();
-    review([{ name: '', emoji: '🏃', date: isoDay(), minutes: 0, intensity: 'mittel', kcal: 0, load: {}, tip: '' }]);
+    review([{ name: '', emoji: '🏃', date: lastDate || isoDay(), minutes: 0, intensity: 'mittel', kcal: 0, load: {}, tip: '' }]);
   },
   'act-edit'(el) {
     const a = activities().find((x) => x.id === el.dataset.id);
