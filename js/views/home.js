@@ -3,10 +3,13 @@ import { SESSIONS, getPath } from '../data/skills.js';
 import { getRecipe } from '../data/food.js';
 import {
   phaseInfo, calendarDays, dateOnly, buildWorkout, buildMobilityWorkout, estimateMinutes,
-  nextSessionKey, workoutsThisWeek, enabledMobility,
+  nextSessionKey, workoutsThisWeek, enabledMobility, startOfWeek, strengthHistory,
 } from '../training.js';
 import { targets, recipeMacros, dayMeals, dayMacros, ensurePlan } from '../nutrition.js';
 import { dayTotals, eatenRows } from '../photo.js';
+import {
+  activityHint, activityButton, activitiesBetween, activityKcal, kcalNote,
+} from '../activity.js';
 import { esc, n0, todayIdx, isStandalone, fmtDate } from '../ui.js';
 
 export function viewHome() {
@@ -52,6 +55,8 @@ export function viewHome() {
   const plan = ensurePlan();
   const day = plan.days[todayIdx()];
   const t = targets();
+  const extra = activityKcal(new Date());
+  const kcalGoal = t.kcal + extra;
   const m = dayTotals(todayIdx());
   const meals = dayMeals(day).map((meal) => {
     const r = getRecipe(meal.id);
@@ -65,6 +70,10 @@ export function viewHome() {
     <div class="card small">📲 <b>Tipp:</b> In Safari auf <b>Teilen</b> → <b>Zum Home-Bildschirm</b> tippen. Dann startet die App im Vollbild, und deine Daten bleiben dauerhaft gespeichert.</div>`;
 
   const last = state.history[state.history.length - 1];
+  const lastStrength = strengthHistory().slice(-1)[0];
+  const hint = w ? '' : activityHint(lastStrength ? new Date(lastStrength.date).getTime() : 0);
+  const weekActs = activitiesBetween(startOfWeek(new Date()), new Date(Date.now() + 86400000));
+  const actLine = weekActs.length ? `<div class="small muted" style="margin-top:8px">Dazu: ${weekActs.map((a) => `${esc(a.emoji)} ${esc(a.name)}`).join(' · ')}</div>` : '';
 
   return `
     <a class="card flex phase-card" href="#/plan" style="border-left:5px solid ${phase.color}">
@@ -72,16 +81,20 @@ export function viewHome() {
       <b>${phase.name}</b> <span class="small muted">· Woche ${phase.weekInPhase}/${phase.weeks}</span></div><span class="chev">›</span>
     </a>
     ${hero}
+    ${hint}
     ${mobCard}
     <div class="card">
       <div class="flex between"><b>Diese Woche</b><span class="pill ${done >= goal ? 'good' : ''}">${done} / ${goal} Trainings</span></div>
       <div class="progress"><div style="width:${Math.min(100, (done / Math.max(1, goal)) * 100)}%"></div></div>
       ${last ? `<div class="small muted" style="margin-top:8px">Zuletzt: ${fmtDate(last.date)} · ${last.kind === 'mobility' ? 'Beweglichkeit' : SESSIONS[last.session].name}</div>` : ''}
+      ${actLine}
     </div>
+    ${activityButton()}
     <h2>Essen heute</h2>
     <div class="card">
-      <div class="flex between"><span>${n0(m.kcal)} / ${n0(t.kcal)} kcal</span><span class="muted">${n0(m.p)} g Eiweiß (Ziel ${t.protein} g)</span></div>
-      <div class="progress"><div style="width:${Math.min(100, (m.kcal / t.kcal) * 100)}%"></div></div>
+      <div class="flex between"><span>${n0(m.kcal)} / ${n0(kcalGoal)} kcal</span><span class="muted">${n0(m.p)} g Eiweiß (Ziel ${t.protein} g)</span></div>
+      <div class="progress"><div style="width:${Math.min(100, (m.kcal / kcalGoal) * 100)}%"></div></div>
+      ${kcalNote()}
     </div>
     <div class="list">${meals}${eatenRows(todayIdx())}</div>
     ${install}`;

@@ -1,7 +1,9 @@
 import { state } from './store.js';
-import { getPath } from './data/skills.js';
-import { buildWorkout, buildMobilityWorkout, startWorkout } from './training.js';
-import { ui, closeSheet, keepAwake, unlockAudio } from './ui.js';
+import { getPath, SESSIONS } from './data/skills.js';
+import {
+  buildWorkout, buildMobilityWorkout, startWorkout, calendarDays, dateOnly, nextSessionKey, phaseInfo,
+} from './training.js';
+import { ui, closeSheet, keepAwake, unlockAudio, fmtDate } from './ui.js';
 import { viewHome } from './views/home.js';
 import { viewPlan, planActions } from './views/plan.js';
 import { viewExercises, exerciseActions, exerciseChanges, submitExercise } from './views/exercises.js';
@@ -13,6 +15,7 @@ import { viewPlayer, playerActions, beginWorkout, tick } from './views/player.js
 import { start as startSync, onRemoteChange } from './sync.js';
 import { refreshCustom } from './recipes.js';
 import { photoActions, submitEatenOut } from './photo.js';
+import { activityActions, submitActivity, configureActivity } from './activity.js';
 
 const $view = document.getElementById('view');
 const $title = document.getElementById('title');
@@ -62,6 +65,7 @@ const actions = {
   ...progressActions,
   ...foodActions,
   ...photoActions,
+  ...activityActions,
   ...profileActions,
   ...playerActions,
   'start-workout'(el) {
@@ -104,6 +108,7 @@ document.addEventListener('submit', (e) => {
   if (form.dataset.form === 'weight') addWeight(form);
   if (form.dataset.form === 'recipe') submitRecipe(form);
   if (form.dataset.form === 'eaten-out') submitEatenOut(form);
+  if (form.dataset.form === 'activity') submitActivity(form);
   if (form.dataset.form === 'exercise') submitExercise(form);
 });
 
@@ -111,6 +116,17 @@ setInterval(tick, 250);
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') render();
+});
+
+// Was Claude über den Plan wissen muss, um anderes Training einzuordnen
+configureActivity({
+  context() {
+    const next = calendarDays(dateOnly(new Date()), 14).find((d) => d.planned);
+    const key = next?.planned || nextSessionKey();
+    const names = buildWorkout(key).entries.map((e) => getPath(e.pathId).levels[e.level].name).join(', ');
+    const when = next ? fmtDate(next.date, { weekday: 'long', day: 'numeric', month: 'long' }) : 'demnächst';
+    return `Calisthenics mit Skill-Progressionen (Handstand, Planche, Front Lever usw.), Ganzkörper A/B im Wechsel, ${state.trainingDays.length}× pro Woche, aktuell Phase „${phaseInfo().name}“. Nächstes Training: ${SESSIONS[key].name} am ${when} (${names}).`;
+  },
 });
 
 refreshCustom();
