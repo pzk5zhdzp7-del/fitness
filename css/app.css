@@ -428,3 +428,15 @@ details.card[open] summary { margin-bottom: 8px; }
 .chips label { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 14px; }
 .chips input { width: 18px; height: 18px; }
 .cx-level { margin-bottom: 10px; }
+
+/* Startseite: Tage wechseln */
+main { overflow-x: clip; }
+.day-nav { display: flex; align-items: center; gap: 4px; margin: -6px 0 8px; }
+.day-nav .btn.ghost { font-size: 30px; line-height: 1; padding: 4px 14px; }
+.day-nav button.plain { flex: 1; min-width: 0; text-align: center; line-height: 1.3; }
+.day-nav button.plain:disabled { cursor: default; }
+.day-nav .to-today { color: var(--accent); }
+#view.day-next { animation: day-next 0.22s ease-out; }
+#view.day-prev { animation: day-prev 0.22s ease-out; }
+@keyframes day-next { from { transform: translateX(28px); opacity: 0.3; } }
+@keyframes day-prev { from { transform: translateX(-28px); opacity: 0.3; } }

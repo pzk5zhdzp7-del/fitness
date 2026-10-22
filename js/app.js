@@ -4,7 +4,7 @@ import {
   buildWorkout, buildMobilityWorkout, startWorkout, calendarDays, dateOnly, nextSessionKey, phaseInfo,
 } from './training.js';
 import { ui, closeSheet, keepAwake, unlockAudio, fmtDate } from './ui.js';
-import { viewHome } from './views/home.js';
+import { viewHome, homeTitle } from './views/home.js';
 import { viewPlan, planActions } from './views/plan.js';
 import { viewExercises, exerciseActions, exerciseChanges, submitExercise } from './views/exercises.js';
 import { applyCustomPaths } from './custom.js';
@@ -40,10 +40,15 @@ function render() {
   document.body.classList.toggle('workout', inWorkout);
   keepAwake(inWorkout);
   $title.textContent = route.view === viewPath ? getPath(args[0])?.name || 'Skill' : route.title;
+  if (route.view === viewHome) $title.textContent = homeTitle();
   document.querySelectorAll('.tabbar a').forEach((a) => a.classList.toggle('active', a.dataset.tab === route.tab));
   $view.innerHTML = route.view(...args);
 }
 ui.render = render;
+
+function onHome() {
+  return routes[0].re.test(location.hash || '#/');
+}
 
 let lastHash = location.hash;
 window.addEventListener('hashchange', () => {
@@ -79,12 +84,56 @@ const actions = {
   'close-sheet'() {
     closeSheet();
   },
+  'home-day'(el) {
+    shiftDay(Number(el.dataset.dir));
+  },
 };
+
+/* ---------- Startseite: Tage wechseln (Pfeile oder seitlich wischen) ---------- */
+
+function shiftDay(dir) {
+  const step = dir || -Math.sign(ui.homeOffset); // 0 = zurück zu heute
+  if (!step) return;
+  ui.homeOffset = dir ? ui.homeOffset + dir : 0;
+  render();
+  window.scrollTo(0, 0);
+  $view.classList.remove('day-next', 'day-prev');
+  void $view.offsetWidth; // Animation neu starten
+  $view.classList.add(step > 0 ? 'day-next' : 'day-prev');
+}
+
+$view.addEventListener('animationend', () => $view.classList.remove('day-next', 'day-prev'));
+
+let swipe = null;
+$view.addEventListener('touchstart', (e) => {
+  swipe = null;
+  if (!onHome() || e.touches.length !== 1 || e.target.closest('input, select, textarea, .exnav')) return;
+  const t = e.touches[0];
+  swipe = { x: t.clientX, y: t.clientY, at: e.timeStamp };
+}, { passive: true });
+
+$view.addEventListener('touchend', (e) => {
+  if (!swipe) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - swipe.x;
+  const dy = t.clientY - swipe.y;
+  const quick = e.timeStamp - swipe.at < 800;
+  swipe = null;
+  // Nach links wischen = nächster Tag, nach rechts = vorheriger
+  if (quick && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.8) shiftDay(dx < 0 ? 1 : -1);
+}, { passive: true });
+
+$view.addEventListener('touchcancel', () => { swipe = null; });
 
 const changeActions = { ...exerciseChanges, ...foodChanges };
 
 document.addEventListener('click', (e) => {
   unlockAudio();
+  // Tab „Heute“ springt immer zurück auf heute
+  if (e.target.closest('.tabbar a[data-tab="home"]') && ui.homeOffset) {
+    ui.homeOffset = 0;
+    if (onHome()) render();
+  }
   const el = e.target.closest('[data-action]');
   if (!el || el.type === 'checkbox') return;
   const fn = actions[el.dataset.action];
@@ -114,8 +163,12 @@ document.addEventListener('submit', (e) => {
 
 setInterval(tick, 250);
 
+// Nach längerer Pause startet die Startseite wieder bei heute
+let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') render();
+  if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt > 30 * 60000) ui.homeOffset = 0;
+  render();
 });
 
 // Was Claude über den Plan wissen muss, um anderes Training einzuordnen

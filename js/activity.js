@@ -160,7 +160,7 @@ export function kcalNote(date = new Date()) {
   const list = activitiesOn(date).filter((a) => a.kcal);
   if (!list.length) return '';
   const total = list.reduce((s, a) => s + a.kcal, 0);
-  return `<div class="small muted" style="margin-top:6px">${list.map((a) => esc(a.emoji || '🏃')).join(' ')} Durch ${esc(list.map((a) => a.name).join(' und '))} heute ca. ${n0(total)} kcal mehr verbraucht. Das Ziel ist entsprechend höher.</div>`;
+  return `<div class="small muted" style="margin-top:6px">${list.map((a) => esc(a.emoji || '🏃')).join(' ')} Durch ${esc(list.map((a) => a.name).join(' und '))} ${isoDay(date) === isoDay() ? 'heute' : 'an diesem Tag'} ca. ${n0(total)} kcal mehr verbraucht. Das Ziel ist entsprechend höher.</div>`;
 }
 
 /* ---------- Anfrage an Claude ---------- */

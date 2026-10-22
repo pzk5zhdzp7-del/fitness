@@ -48,8 +48,8 @@ export function viewPlan() {
     <button class="btn secondary block" data-action="restart-cycle">Zyklus ab dieser Woche neu starten</button>`;
 }
 
-function dayDetails(dateIso, key) {
-  const date = new Date(dateIso);
+// Erledigtes, anderes Training und geplante Einheit eines Tages (Kalender und Startseite)
+export function dayContent(date, key) {
   const phase = phaseInfo(date);
   const done = state.history.filter((h) => dateOnly(h.date).getTime() === dateOnly(date).getTime());
   let body = '';
@@ -68,7 +68,6 @@ function dayDetails(dateIso, key) {
 
   const acts = activitiesOn(date);
   if (acts.length) body += `<h2>Anderes Training</h2><div class="list">${acts.map((a) => activityRow(a, false)).join('')}</div>`;
-  const notFuture = dateOnly(date) <= dateOnly(new Date());
 
   if (key) {
     const w = buildWorkout(key, phase.key);
@@ -87,6 +86,14 @@ function dayDetails(dateIso, key) {
       body += `<button class="btn block" data-action="start-workout" data-key="${key}">Jetzt starten</button>`;
     }
   }
+  return body;
+}
+
+function dayDetails(dateIso, key) {
+  const date = new Date(dateIso);
+  const phase = phaseInfo(date);
+  const notFuture = dateOnly(date) <= dateOnly(new Date());
+  let body = dayContent(date, key);
   if (!body) body = '<div class="empty">Kein Training geplant – Ruhetag. 😌<br>Eine Einheit Beweglichkeit passt immer.</div>';
 
   openSheet(`<h3>${fmtDate(date, { weekday: 'long', day: 'numeric', month: 'long' })}</h3>

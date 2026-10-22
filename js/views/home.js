@@ -3,16 +3,17 @@ import { SESSIONS, getPath } from '../data/skills.js';
 import { getRecipe } from '../data/food.js';
 import {
   phaseInfo, calendarDays, dateOnly, buildWorkout, buildMobilityWorkout, estimateMinutes,
-  nextSessionKey, workoutsThisWeek, enabledMobility, startOfWeek, strengthHistory,
+  nextSessionKey, workoutsThisWeek, enabledMobility, startOfWeek, strengthHistory, CYCLE,
 } from '../training.js';
-import { targets, recipeMacros, dayMeals, dayMacros, ensurePlan } from '../nutrition.js';
+import { targets, recipeMacros, dayMeals, ensurePlan } from '../nutrition.js';
 import { dayTotals, eatenRows } from '../photo.js';
 import {
-  activityHint, activityButton, activitiesBetween, activityKcal, kcalNote,
+  activityHint, activityButton, activitiesBetween, activityKcal, kcalNote, isoDay,
 } from '../activity.js';
-import { esc, n0, todayIdx, isStandalone, fmtDate } from '../ui.js';
+import { dayContent } from './plan.js';
+import { ui, esc, n0, isStandalone, fmtDate } from '../ui.js';
 
-export function viewHome() {
+function viewToday() {
   const w = state.activeWorkout;
   const phase = phaseInfo();
   const today = calendarDays(dateOnly(new Date()), 1)[0];
@@ -52,20 +53,6 @@ export function viewHome() {
       <button class="btn secondary small" data-action="start-mobility" ${w ? 'disabled' : ''}>Start</button>
     </div>` : '';
 
-  const plan = ensurePlan();
-  const day = plan.days[todayIdx()];
-  const t = targets();
-  const extra = activityKcal(new Date());
-  const kcalGoal = t.kcal + extra;
-  const m = dayTotals(todayIdx());
-  const meals = dayMeals(day).map((meal) => {
-    const r = getRecipe(meal.id);
-    const mm = recipeMacros(r, day.scale);
-    return `<button class="row" data-action="recipe" data-day="${todayIdx()}" data-id="${r.id}">
-      <div class="grow"><div class="small muted">${meal.label}</div><div>${esc(r.name)}</div></div>
-      <div class="small muted">${n0(mm.kcal)} kcal</div><span class="chev">›</span></button>`;
-  }).join('');
-
   const install = isStandalone() ? '' : `
     <div class="card small">📲 <b>Tipp:</b> In Safari auf <b>Teilen</b> → <b>Zum Home-Bildschirm</b> tippen. Dann startet die App im Vollbild, und deine Daten bleiben dauerhaft gespeichert.</div>`;
 
@@ -90,12 +77,84 @@ export function viewHome() {
       ${actLine}
     </div>
     ${activityButton()}
-    <h2>Essen heute</h2>
+    ${foodSection(new Date(), 'Essen heute')}
+    ${install}`;
+}
+
+/* ---------- Andere Tage ---------- */
+
+const DAY_NAMES = { '-2': 'Vorgestern', '-1': 'Gestern', 0: 'Heute', 1: 'Morgen', 2: 'Übermorgen' };
+
+// Der Tag, den die Startseite gerade zeigt
+function shownDate() {
+  const d = dateOnly(new Date());
+  d.setDate(d.getDate() + ui.homeOffset);
+  return d;
+}
+
+export function homeTitle() {
+  return DAY_NAMES[ui.homeOffset] || fmtDate(shownDate(), { weekday: 'long' });
+}
+
+function dayNav() {
+  const date = shownDate();
+  const off = ui.homeOffset;
+  const sub = fmtDate(date, DAY_NAMES[off] ? { weekday: 'long', day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: 'numeric' });
+  return `
+    <div class="day-nav">
+      <button class="btn ghost" data-action="home-day" data-dir="-1" aria-label="Vorheriger Tag">‹</button>
+      <button class="plain grow" data-action="home-day" data-dir="0" ${off ? '' : 'disabled'}>
+        <b>${homeTitle()}</b><div class="small muted">${sub}</div>
+        ${off ? '<div class="small to-today">Zurück zu heute</div>' : ''}</button>
+      <button class="btn ghost" data-action="home-day" data-dir="1" aria-label="Nächster Tag">›</button>
+    </div>`;
+}
+
+// Essen eines Tages; den Plan gibt es nur für die laufende Woche
+function foodSection(date, heading = 'Essen') {
+  const plan = ensurePlan();
+  if (isoDay(startOfWeek(date)) !== plan.weekStart) {
+    return `<h2>${heading}</h2><div class="card small muted">Der Essensplan gilt immer für die laufende Woche (Montag bis Sonntag). Für diesen Tag gibt es keinen.</div>`;
+  }
+  const idx = (date.getDay() + 6) % 7;
+  const day = plan.days[idx];
+  const t = targets();
+  const kcalGoal = t.kcal + activityKcal(date);
+  const m = dayTotals(idx);
+  const meals = dayMeals(day).map((meal) => {
+    const r = getRecipe(meal.id);
+    const mm = recipeMacros(r, day.scale);
+    return `<button class="row" data-action="recipe" data-day="${idx}" data-id="${r.id}">
+      <div class="grow"><div class="small muted">${meal.label}</div><div>${esc(r.name)}</div></div>
+      <div class="small muted">${n0(mm.kcal)} kcal</div><span class="chev">›</span></button>`;
+  }).join('');
+  return `
+    <h2>${heading}</h2>
     <div class="card">
       <div class="flex between"><span>${n0(m.kcal)} / ${n0(kcalGoal)} kcal</span><span class="muted">${n0(m.p)} g Eiweiß (Ziel ${t.protein} g)</span></div>
       <div class="progress"><div style="width:${Math.min(100, (m.kcal / kcalGoal) * 100)}%"></div></div>
-      ${kcalNote()}
+      ${kcalNote(date)}
     </div>
-    <div class="list">${meals}${eatenRows(todayIdx())}</div>
-    ${install}`;
+    <div class="list">${meals}${eatenRows(idx)}</div>`;
+}
+
+function viewDay(date) {
+  const today = dateOnly(new Date());
+  const past = date < today;
+  const phase = phaseInfo(date);
+  const key = past ? null : calendarDays(today, ui.homeOffset + 1).find((d) => isoDay(d.date) === isoDay(date))?.planned || null;
+  const training = dayContent(date, key)
+    || `<div class="empty">${past ? 'An diesem Tag ist kein Training eingetragen.' : 'Kein Training geplant: Ruhetag. 😌'}</div>`;
+  return `
+    <div class="card" style="border-left:5px solid ${phase.color}">
+      <div class="small muted">Zyklus ${phase.cycle} · Woche ${phase.cycleWeek}/${CYCLE.length}</div>
+      <b>${phase.name}</b> <span class="small muted">· Woche ${phase.weekInPhase}/${phase.weeks}</span>
+    </div>
+    ${training}
+    ${past ? activityButton('🏃 Anderes Training an diesem Tag', isoDay(date)) : ''}
+    ${foodSection(date, `Essen ${DAY_NAMES[ui.homeOffset]?.toLowerCase() || `am ${fmtDate(date, { weekday: 'long' })}`}`)}`;
+}
+
+export function viewHome() {
+  return dayNav() + (ui.homeOffset ? viewDay(shownDate()) : viewToday());
 }

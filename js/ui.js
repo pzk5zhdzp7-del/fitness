@@ -5,6 +5,7 @@ import { state } from './store.js';
 export const ui = {
   foodDay: (new Date().getDay() + 6) % 7,
   foodTab: 'plan',
+  homeOffset: 0, // Startseite: Tage ab heute
   shopFromToday: false,
   pending: null,
   holdStart: null,
