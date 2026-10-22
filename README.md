@@ -21,6 +21,7 @@ Eine Web-App (PWA) fürs iPhone, die sich wie eine normale App auf den Home-Bild
 - Eigene Rezepte und Zutaten (bei gemeinsamem Plan in beiden Apps sichtbar)
 - Einkaufsliste aus dem Wochenplan, nach Abteilungen sortiert, mit eigenen Einträgen
 - „Auswärts gegessen“: Essen fotografieren, Claude schätzt kcal, Eiweiß, Kohlenhydrate und Fett, Werte prüfen und für den Tag eintragen (zusätzlich oder statt einer geplanten Mahlzeit). Ohne Schlüssel über die Claude-App (Teilen und Antwort einfügen), mit eigenem API-Schlüssel direkt in der App
+- „Anderes Training“: Fußball, Joggen & Co. in eigenen Worten beschreiben, Claude macht daraus Einträge (Dauer, Intensität, Mehrverbrauch, Belastung je Körperbereich) und einen Tipp fürs nächste Training. Die Einträge stehen im Kalender und im Verlauf, der Mehrverbrauch erhöht das Kalorienziel des Tages. Läuft über die Claude-App (Teilen und Antwort einfügen), mit dem API-Schlüssel aus „Auswärts gegessen“ auch direkt
 
 Offline nutzbar, Hell- und Dunkelmodus, Backup als JSON.
 

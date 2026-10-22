@@ -5,6 +5,7 @@ import {
   PHASES, CYCLE, phaseInfo, calendarDays, dateOnly, buildWorkout, estimateMinutes, restartCycle,
 } from '../training.js';
 import { esc, fmtDate, unitOf, openSheet, rerender } from '../ui.js';
+import { activitiesOn, activityRow, calendarMark } from '../activity.js';
 
 const DAY = 86400000;
 
@@ -25,7 +26,7 @@ export function viewPlan() {
       else if (d.missed) mark = '<span class="tag missed">–</span>';
       const iso = d.date.toISOString();
       return `<button class="cal-day ${d.isToday ? 'today' : ''} ${d.past ? 'past' : ''}" data-action="cal-day" data-date="${iso}" data-key="${d.planned || ''}">
-        <span class="num">${d.date.getDate()}</span>${mark}${d.mobility ? '<span class="dot-mob"></span>' : ''}</button>`;
+        <span class="num">${d.date.getDate()}</span>${mark}${d.mobility ? '<span class="dot-mob"></span>' : ''}${calendarMark(d.date)}</button>`;
     }).join('');
     weeks += `<div class="cal-week"><div class="cal-label" style="color:${p.color}">Woche ${wk + 1} · ${p.name}</div><div class="cal-grid">${cells}</div></div>`;
   }
@@ -64,6 +65,9 @@ function dayDetails(dateIso, key) {
         <div class="small muted">${e.sets.join(' · ')} ${unitOf(e)}${e.targets ? ` (Ziel ${e.targets.join(' · ')})` : ''}</div></div></div>`;
     }).join('')}</div>`;
   }
+
+  const acts = activitiesOn(date);
+  if (acts.length) body += `<h2>Anderes Training</h2><div class="list">${acts.map((a) => activityRow(a, false)).join('')}</div>`;
 
   if (key) {
     const w = buildWorkout(key, phase.key);
