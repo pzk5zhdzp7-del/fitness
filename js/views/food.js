@@ -8,7 +8,7 @@ import {
 } from '../sync.js';
 import { refreshCustom, isCustom, isOff, setOff, saveRecipe, removeRecipe, saveIngredient } from '../recipes.js';
 import { state } from '../store.js';
-import { dayTotals, eatenRows, planDate, replacedKeys, mealKey } from '../photo.js';
+import { dayTotals, eatenRows, eatButton, planDate, replacedKeys, mealKey } from '../photo.js';
 import { ui, esc, n0, todayIdx, WEEKDAYS, WEEK_ORDER, openSheet, closeSheet, rerender } from '../ui.js';
 
 const KINDS = [
@@ -41,8 +41,9 @@ function plan() {
     const mm = recipeMacros(r, day.scale);
     const out = replaced.has(mealKey(meal));
     return `<div class="row ex-row ${out ? 'off' : ''}">
+      ${out ? '<span class="eat-spacer"></span>' : eatButton(d, meal)}
       <button class="grow plain ex-name" data-action="recipe" data-day="${d}" data-id="${r.id}">
-        <div class="small muted">${meal.label} · ${out ? 'auswärts gegessen' : `${r.time} Min`}</div><div>${esc(r.name)}</div>
+        <div class="small muted">${meal.label} · ${out ? 'etwas anderes gegessen' : `${r.time} Min`}</div><div>${esc(r.name)}</div>
         <div class="small muted">${n0(mm.kcal)} kcal · ${n0(mm.p)} g Eiweiß</div></button>
       <button class="btn ghost" data-action="swap" data-day="${d}" data-slot="${meal.slot}" data-index="${meal.index ?? 0}" aria-label="Gericht tauschen">🔄</button>
     </div>`;
@@ -51,7 +52,8 @@ function plan() {
   return `
     <div class="daytabs small-tabs">${tabs}</div>
     <div class="card">
-      <div class="flex between"><b>${n0(m.kcal)} kcal</b><span class="muted small">Ziel ${n0(t.kcal)} kcal · ${t.protein} g Eiweiß</span></div>
+      <div class="flex between"><b>${n0(m.kcal)} kcal gegessen</b><span class="muted small">Ziel ${n0(t.kcal)} kcal · ${t.protein} g Eiweiß</span></div>
+      <div class="small muted">Laut Plan ${n0(m.planned)} kcal${m.open ? ` · ${m.open} ${m.open === 1 ? 'Mahlzeit' : 'Mahlzeiten'} noch nicht abgehakt` : ''}</div>
       <div class="macros">
         <div><b>${n0(m.p)} g</b><span>Eiweiß</span></div>
         <div><b>${n0(m.c)} g</b><span>Kohlenh.</span></div>
@@ -60,8 +62,8 @@ function plan() {
       </div>
     </div>
     <div class="list">${meals}${eatenRows(d)}</div>
-    <button class="btn block" data-action="eo-start" data-day="${d}">📷 Auswärts gegessen</button>
-    <p class="small muted">Die Portionsgrößen werden automatisch an dein Kalorienziel angepasst. Mit 🔄 suchst du dir ein anderes Gericht aus.${isLinked() ? ' Der Plan ist gemeinsam: Änderungen sieht auch die andere App.' : ''}</p>
+    <button class="btn block" data-action="eo-start" data-day="${d}">🍽️ Etwas anderes gegessen</button>
+    <p class="small muted">Hake ab, was du gegessen hast. Nur das zählt in deine Tageswerte. Hast du etwas anderes gegessen, trag es über den Knopf oben ein, mit Rezept, eigenen Werten oder Foto. Die Portionsgrößen werden automatisch an dein Kalorienziel angepasst. Mit 🔄 suchst du dir ein anderes Gericht aus.${isLinked() ? ' Der Plan ist gemeinsam: Änderungen sieht auch die andere App.' : ''}</p>
     <button class="btn secondary block" data-action="new-plan">Neuen Wochenplan erstellen</button>`;
 }
 

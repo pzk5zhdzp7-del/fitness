@@ -440,3 +440,20 @@ main { overflow-x: clip; }
 #view.day-prev { animation: day-prev 0.22s ease-out; }
 @keyframes day-next { from { transform: translateX(28px); opacity: 0.3; } }
 @keyframes day-prev { from { transform: translateX(-28px); opacity: 0.3; } }
+
+/* Mahlzeit als gegessen abhaken */
+.eat {
+  flex: none;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: none;
+  color: #fff;
+  font: inherit; font-weight: 700; font-size: 16px; line-height: 1;
+  display: grid; place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+.eat.on { background: var(--good); border-color: var(--good); }
+.eat-spacer { flex: none; width: 30px; }
+.row-btn { display: flex; align-items: center; gap: 12px; }

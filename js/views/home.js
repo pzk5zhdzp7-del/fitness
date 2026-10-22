@@ -6,7 +6,7 @@ import {
   nextSessionKey, workoutsThisWeek, enabledMobility, startOfWeek, strengthHistory, CYCLE,
 } from '../training.js';
 import { targets, recipeMacros, dayMeals, ensurePlan } from '../nutrition.js';
-import { dayTotals, eatenRows } from '../photo.js';
+import { dayTotals, eatenRows, eatButton, planDate, replacedKeys, mealKey } from '../photo.js';
 import {
   activityHint, activityButton, activitiesBetween, activityKcal, kcalNote, isoDay,
 } from '../activity.js';
@@ -121,21 +121,27 @@ function foodSection(date, heading = 'Essen') {
   const t = targets();
   const kcalGoal = t.kcal + activityKcal(date);
   const m = dayTotals(idx);
+  const replaced = replacedKeys(planDate(idx));
   const meals = dayMeals(day).map((meal) => {
     const r = getRecipe(meal.id);
     const mm = recipeMacros(r, day.scale);
-    return `<button class="row" data-action="recipe" data-day="${idx}" data-id="${r.id}">
-      <div class="grow"><div class="small muted">${meal.label}</div><div>${esc(r.name)}</div></div>
-      <div class="small muted">${n0(mm.kcal)} kcal</div><span class="chev">›</span></button>`;
+    const out = replaced.has(mealKey(meal));
+    return `<div class="row ${out ? 'ex-row off' : ''}">
+      ${out ? '<span class="eat-spacer"></span>' : eatButton(idx, meal)}
+      <button class="grow plain row-btn ex-name" data-action="recipe" data-day="${idx}" data-id="${r.id}">
+        <div class="grow"><div class="small muted">${meal.label}${out ? ' · etwas anderes gegessen' : ''}</div><div>${esc(r.name)}</div></div>
+        <div class="small muted">${n0(mm.kcal)} kcal</div><span class="chev">›</span></button></div>`;
   }).join('');
   return `
     <h2>${heading}</h2>
     <div class="card">
-      <div class="flex between"><span>${n0(m.kcal)} / ${n0(kcalGoal)} kcal</span><span class="muted">${n0(m.p)} g Eiweiß (Ziel ${t.protein} g)</span></div>
+      <div class="flex between"><span>${n0(m.kcal)} / ${n0(kcalGoal)} kcal gegessen</span><span class="muted">${n0(m.p)} g Eiweiß (Ziel ${t.protein} g)</span></div>
       <div class="progress"><div style="width:${Math.min(100, (m.kcal / kcalGoal) * 100)}%"></div></div>
+      ${m.open ? `<div class="small muted" style="margin-top:6px">Hake ab, was du gegessen hast. Nur das zählt.</div>` : ''}
       ${kcalNote(date)}
     </div>
-    <div class="list">${meals}${eatenRows(idx)}</div>`;
+    <div class="list">${meals}${eatenRows(idx)}</div>
+    <button class="btn secondary block" data-action="eo-start" data-day="${idx}">🍽️ Etwas anderes gegessen</button>`;
 }
 
 function viewDay(date) {

@@ -1,8 +1,9 @@
-// Auswärts gegessen: Essen fotografieren, Claude schätzt die Nährwerte, Eintrag für den Tag.
-// Zwei Wege: mit eigenem API-Schlüssel direkt aus der App, sonst über die Claude-App (Teilen/Kopieren).
+// Was wirklich gegessen wurde: geplante Mahlzeiten abhaken oder etwas anderes eintragen
+// (Rezept aus der App, eigene Werte oder Foto, bei dem Claude die Nährwerte schätzt).
+// Foto-Schätzung: mit eigenem API-Schlüssel direkt aus der App, sonst über die Claude-App (Teilen/Kopieren).
 import { state, save } from './store.js';
 import { dayMeals, dayMacros, recipeMacros, ensurePlan } from './nutrition.js';
-import { getRecipe } from './data/food.js';
+import { getRecipe, allRecipes } from './data/food.js';
 import { esc, n0, openSheet, closeSheet, rerender, WEEKDAYS, WEEK_ORDER } from './ui.js';
 
 const KEY_STORE = 'claude-api-key'; // bewusst getrennt vom Backup, damit der Schlüssel nicht exportiert wird
@@ -71,21 +72,54 @@ export function replacedKeys(date) {
   return new Set(eatenOn(date).map((e) => e.replaces).filter(Boolean));
 }
 
-// Tagessumme: Plan ohne ersetzte Mahlzeiten plus auswärts Gegessenes
+// Abgehakte Mahlzeiten aus dem Plan: { '2026-10-22': { 'lunch:0': 'rezept-id' } }, nur für diese Person
+function confirmed(date) {
+  if (!state.mealsEaten || typeof state.mealsEaten !== 'object') state.mealsEaten = {};
+  return state.mealsEaten[date] || {};
+}
+
+export function isEaten(date, meal) {
+  return !!confirmed(date)[mealKey(meal)];
+}
+
+function toggleEaten(dayIdx, key) {
+  const day = ensurePlan().days[dayIdx];
+  const meal = dayMeals(day).find((m) => mealKey(m) === key);
+  if (!meal) return;
+  const date = planDate(dayIdx);
+  const done = { ...confirmed(date) };
+  if (done[key]) delete done[key];
+  else done[key] = meal.id;
+  if (Object.keys(done).length) state.mealsEaten[date] = done;
+  else delete state.mealsEaten[date];
+  prune();
+  save();
+}
+
+// Tagessumme: nur abgehakte Mahlzeiten aus dem Plan plus anders Gegessenes.
+// planned = was der Plan für den Tag vorsieht.
 export function dayTotals(dayIdx) {
   const day = ensurePlan().days[dayIdx];
   const date = planDate(dayIdx);
   const replaced = replacedKeys(date);
-  const total = dayMacros(day);
+  const total = { kcal: 0, p: 0, c: 0, f: 0, planned: dayMacros(day).kcal, open: 0 };
   for (const meal of dayMeals(day)) {
-    if (!replaced.has(mealKey(meal))) continue;
+    const key = mealKey(meal);
+    if (replaced.has(key)) continue;
+    if (!isEaten(date, meal)) { total.open += 1; continue; }
     const m = recipeMacros(getRecipe(meal.id), day.scale);
-    total.kcal -= m.kcal; total.p -= m.p; total.c -= m.c; total.f -= m.f;
+    total.kcal += m.kcal; total.p += m.p; total.c += m.c; total.f += m.f;
   }
   for (const e of eatenOn(date)) {
     total.kcal += e.kcal; total.p += e.p; total.c += e.c; total.f += e.f;
   }
   return total;
+}
+
+// Haken-Knopf für eine geplante Mahlzeit
+export function eatButton(dayIdx, meal) {
+  const on = isEaten(planDate(dayIdx), meal);
+  return `<button class="eat ${on ? 'on' : ''}" data-action="eat-toggle" data-day="${dayIdx}" data-key="${mealKey(meal)}" aria-pressed="${on}" aria-label="${on ? 'Gegessen, Haken entfernen' : 'Als gegessen abhaken'}">${on ? '✓' : ''}</button>`;
 }
 
 // Alte Einträge (älter als 8 Wochen) aufräumen
@@ -94,6 +128,9 @@ function prune() {
   d.setDate(d.getDate() - 56);
   const limit = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   state.eatenOut = entries().filter((e) => e.date >= limit);
+  for (const date of Object.keys(state.mealsEaten || {})) {
+    if (date < limit) delete state.mealsEaten[date];
+  }
 }
 
 /* ---------- Anzeige im Tagesplan ---------- */
@@ -102,7 +139,7 @@ export function eatenRows(dayIdx) {
   return eatenOn(planDate(dayIdx)).map((e) => `
     <div class="row">
       <button class="grow plain" data-action="eo-edit" data-id="${e.id}">
-        <div class="small muted">📷 Auswärts${e.replaces ? ` · statt ${esc(slotLabel(dayIdx, e.replaces))}` : ''}</div><div>${esc(e.name)}</div>
+        <div class="small muted">✓ ${e.replaces ? `Statt ${esc(slotLabel(dayIdx, e.replaces))}` : 'Zusätzlich'} gegessen</div><div>${esc(e.name)}</div>
         <div class="small muted">${n0(e.kcal)} kcal · ${n0(e.p)} g Eiweiß · ${n0(e.c)} g KH · ${n0(e.f)} g Fett</div></button>
       <button class="btn ghost" data-action="eo-delete" data-id="${e.id}" aria-label="Eintrag löschen">✕</button>
     </div>`).join('');
@@ -134,21 +171,38 @@ function guessSlot(dayIdx) {
   return replacedKeys(planDate(dayIdx)).has(key) ? '' : key;
 }
 
-function start(dayIdx) {
+function recipeOptions() {
+  const groups = [['breakfast', 'Frühstück'], ['main', 'Mittag & Abend'], ['snack', 'Snacks']];
+  return `<option value="">Rezept wählen …</option>${groups.map(([slot, label]) => `<optgroup label="${label}">${allRecipes()
+    .filter((r) => r.slot === slot)
+    .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+    .map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</optgroup>`).join('')}`;
+}
+
+function start(dayIdx, replaces = guessSlot(dayIdx)) {
   photo = null;
   const hasKey = !!apiKey();
   const day = WEEKDAYS[WEEK_ORDER[dayIdx]];
   openSheet(`
-    <h3>📷 Auswärts gegessen</h3>
+    <h3>🍽️ Etwas anderes gegessen</h3>
     <div class="small muted">${day}, ${planDate(dayIdx).split('-').reverse().join('.')}</div>
-    <label class="btn block" style="margin-top:12px">
+    <div class="list" style="margin-top:12px">
+      <label class="field"><span>Eintragen</span><select id="eo-replaces">${replaceOptions(dayIdx, replaces)}</select></label>
+    </div>
+    <h2>Rezept aus der App</h2>
+    <div class="list">
+      <label class="field"><span>Gericht</span><select id="eo-recipe">${recipeOptions()}</select></label>
+    </div>
+    <button class="btn secondary block" data-action="eo-recipe" data-day="${dayIdx}">Rezept übernehmen</button>
+    <button class="btn ghost block" data-action="eo-manual" data-day="${dayIdx}" style="margin-top:8px">Werte selbst eintragen</button>
+    <h2>📷 Foto, Claude schätzt</h2>
+    <label class="btn block">
       Foto aufnehmen oder auswählen
       <input type="file" accept="image/*" id="eo-file" hidden>
     </label>
     <img id="eo-preview" alt="" style="display:none;width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-top:10px">
     <div class="list" style="margin-top:10px">
       <label class="field"><span>Ergänzung (optional)</span><input id="eo-note" autocomplete="off" placeholder="z. B. große Portion, ohne Pommes gegessen"></label>
-      <label class="field"><span>Eintragen</span><select id="eo-replaces">${replaceOptions(dayIdx, guessSlot(dayIdx))}</select></label>
     </div>
     <p class="small warn" id="eo-error"></p>
     ${hasKey ? `
@@ -161,7 +215,6 @@ function start(dayIdx) {
       </div>
       <button class="btn secondary block" data-action="eo-paste" data-day="${dayIdx}">Übernehmen</button>
     `}
-    <button class="btn ghost block" data-action="eo-manual" data-day="${dayIdx}" style="margin-top:8px">Werte selbst eintragen</button>
     <details class="card small" style="margin-top:10px">
       <summary>Automatisch mit eigenem API-Schlüssel</summary>
       <p>Mit einem Schlüssel aus der <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console</a> schätzt die App direkt, ohne Umweg über die Claude-App. Ein Foto kostet etwa 1 bis 3 Cent vom Guthaben dort. Der Schlüssel bleibt nur auf diesem Gerät und ist nicht im Backup.</p>
@@ -268,7 +321,7 @@ function parseAnswer(text) {
     throw new Error('Die Antwort ließ sich nicht lesen. Bitte die ganze Antwort von Claude einfügen.');
   }
   const n = (v) => Math.max(0, Math.round(parseFloat(String(v ?? 0).replace(',', '.')) || 0));
-  return { name: String(j.gericht || 'Auswärts gegessen'), kcal: n(j.kcal), p: n(j.eiweiss), c: n(j.kohlenhydrate), f: n(j.fett), note: String(j.hinweis || '') };
+  return { name: String(j.gericht || 'Etwas anderes'), kcal: n(j.kcal), p: n(j.eiweiss), c: n(j.kohlenhydrate), f: n(j.fett), note: String(j.hinweis || '') };
 }
 
 async function share() {
@@ -314,7 +367,7 @@ function review(dayIdx, est, replaces, id = null) {
 export function submitEatenOut(form) {
   const f = form.elements;
   const num = (n) => Math.max(0, Math.round(parseFloat(String(f[n].value).replace(',', '.')) || 0));
-  const name = f.name.value.trim() || 'Auswärts gegessen';
+  const name = f.name.value.trim() || 'Etwas anderes';
   const kcal = num('kcal');
   if (!kcal) return error('Bitte die Kalorien eintragen.');
   const dayIdx = Number(form.dataset.day);
@@ -332,7 +385,20 @@ export function submitEatenOut(form) {
 
 export const photoActions = {
   'eo-start'(el) {
-    start(Number(el.dataset.day));
+    start(Number(el.dataset.day), el.dataset.key);
+  },
+  'eat-toggle'(el) {
+    toggleEaten(Number(el.dataset.day), el.dataset.key);
+    rerender();
+  },
+  'eo-recipe'(el) {
+    const id = document.getElementById('eo-recipe').value;
+    const r = getRecipe(id);
+    if (!r) return error('Bitte ein Rezept wählen.');
+    const dayIdx = Number(el.dataset.day);
+    const m = recipeMacros(r, ensurePlan().days[dayIdx].scale);
+    photo = null;
+    review(dayIdx, { name: r.name, kcal: Math.round(m.kcal), p: Math.round(m.p), c: Math.round(m.c), f: Math.round(m.f), note: '' }, chosenReplace());
   },
   'eo-estimate'(el) {
     estimate(Number(el.dataset.day), el);
