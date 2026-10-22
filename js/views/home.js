@@ -6,6 +6,7 @@ import {
   nextSessionKey, workoutsThisWeek, enabledMobility,
 } from '../training.js';
 import { targets, recipeMacros, dayMeals, dayMacros, ensurePlan } from '../nutrition.js';
+import { dayTotals, eatenRows } from '../photo.js';
 import { esc, n0, todayIdx, isStandalone, fmtDate } from '../ui.js';
 
 export function viewHome() {
@@ -51,7 +52,7 @@ export function viewHome() {
   const plan = ensurePlan();
   const day = plan.days[todayIdx()];
   const t = targets();
-  const m = dayMacros(day);
+  const m = dayTotals(todayIdx());
   const meals = dayMeals(day).map((meal) => {
     const r = getRecipe(meal.id);
     const mm = recipeMacros(r, day.scale);
@@ -82,6 +83,6 @@ export function viewHome() {
       <div class="flex between"><span>${n0(m.kcal)} / ${n0(t.kcal)} kcal</span><span class="muted">${n0(m.p)} g Eiweiß (Ziel ${t.protein} g)</span></div>
       <div class="progress"><div style="width:${Math.min(100, (m.kcal / t.kcal) * 100)}%"></div></div>
     </div>
-    <div class="list">${meals}</div>
+    <div class="list">${meals}${eatenRows(todayIdx())}</div>
     ${install}`;
 }

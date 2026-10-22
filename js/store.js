@@ -44,6 +44,7 @@ const DEFAULTS = {
   mealPlan: null,
   shopping: { weekStart: null, checked: {}, custom: [] },
   customPaths: [], // eigene Übungen (siehe custom.js)
+  eatenOut: [], // auswärts gegessen, nur für diese Person (siehe photo.js)
   customRecipes: [], // eigene Rezepte (siehe recipes.js)
   customIngredients: {},
   recipeOff: [], // abgewählte Rezepte, kommen nicht in den Wochenplan

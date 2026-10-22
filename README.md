@@ -20,6 +20,7 @@ Eine Web-App (PWA) fürs iPhone, die sich wie eine normale App auf den Home-Bild
 - Alle Rezepte zum Durchblättern, einzeln an- und abwählbar, Gericht für eine Mahlzeit selbst aussuchen
 - Eigene Rezepte und Zutaten (bei gemeinsamem Plan in beiden Apps sichtbar)
 - Einkaufsliste aus dem Wochenplan, nach Abteilungen sortiert, mit eigenen Einträgen
+- „Auswärts gegessen“: Essen fotografieren, Claude schätzt kcal, Eiweiß, Kohlenhydrate und Fett, Werte prüfen und für den Tag eintragen (zusätzlich oder statt einer geplanten Mahlzeit). Ohne Schlüssel über die Claude-App (Teilen und Antwort einfügen), mit eigenem API-Schlüssel direkt in der App
 
 Offline nutzbar, Hell- und Dunkelmodus, Backup als JSON.
 

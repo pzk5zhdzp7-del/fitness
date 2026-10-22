@@ -8,6 +8,7 @@ import {
 } from '../sync.js';
 import { refreshCustom, isCustom, isOff, setOff, saveRecipe, removeRecipe, saveIngredient } from '../recipes.js';
 import { state } from '../store.js';
+import { dayTotals, eatenRows, planDate, replacedKeys, mealKey } from '../photo.js';
 import { ui, esc, n0, todayIdx, WEEKDAYS, WEEK_ORDER, openSheet, closeSheet, rerender } from '../ui.js';
 
 const KINDS = [
@@ -30,16 +31,18 @@ function plan() {
   const t = targets();
   const d = ui.foodDay;
   const day = p.days[d];
-  const m = dayMacros(day);
+  const m = dayTotals(d);
+  const replaced = replacedKeys(planDate(d));
 
   const tabs = WEEK_ORDER.map((wd, i) => `<button class="${i === d ? 'on' : ''} ${i === todayIdx() ? 'today' : ''}" data-action="food-day" data-idx="${i}">${WEEKDAYS[wd]}</button>`).join('');
 
   const meals = dayMeals(day).map((meal) => {
     const r = getRecipe(meal.id);
     const mm = recipeMacros(r, day.scale);
-    return `<div class="row">
-      <button class="grow plain" data-action="recipe" data-day="${d}" data-id="${r.id}">
-        <div class="small muted">${meal.label} · ${r.time} Min</div><div>${esc(r.name)}</div>
+    const out = replaced.has(mealKey(meal));
+    return `<div class="row ex-row ${out ? 'off' : ''}">
+      <button class="grow plain ex-name" data-action="recipe" data-day="${d}" data-id="${r.id}">
+        <div class="small muted">${meal.label} · ${out ? 'auswärts gegessen' : `${r.time} Min`}</div><div>${esc(r.name)}</div>
         <div class="small muted">${n0(mm.kcal)} kcal · ${n0(mm.p)} g Eiweiß</div></button>
       <button class="btn ghost" data-action="swap" data-day="${d}" data-slot="${meal.slot}" data-index="${meal.index ?? 0}" aria-label="Gericht tauschen">🔄</button>
     </div>`;
@@ -56,7 +59,8 @@ function plan() {
         <div><b>×${day.scale.toLocaleString('de-DE')}</b><span>Portion</span></div>
       </div>
     </div>
-    <div class="list">${meals}</div>
+    <div class="list">${meals}${eatenRows(d)}</div>
+    <button class="btn block" data-action="eo-start" data-day="${d}">📷 Auswärts gegessen</button>
     <p class="small muted">Die Portionsgrößen werden automatisch an dein Kalorienziel angepasst. Mit 🔄 suchst du dir ein anderes Gericht aus.${isLinked() ? ' Der Plan ist gemeinsam: Änderungen sieht auch die andere App.' : ''}</p>
     <button class="btn secondary block" data-action="new-plan">Neuen Wochenplan erstellen</button>`;
 }

@@ -12,6 +12,7 @@ import { viewProfile, profileActions, profileChange } from './views/profile.js';
 import { viewPlayer, playerActions, beginWorkout, tick } from './views/player.js';
 import { start as startSync, onRemoteChange } from './sync.js';
 import { refreshCustom } from './recipes.js';
+import { photoActions, submitEatenOut } from './photo.js';
 
 const $view = document.getElementById('view');
 const $title = document.getElementById('title');
@@ -60,6 +61,7 @@ const actions = {
   ...exerciseActions,
   ...progressActions,
   ...foodActions,
+  ...photoActions,
   ...profileActions,
   ...playerActions,
   'start-workout'(el) {
@@ -101,6 +103,7 @@ document.addEventListener('submit', (e) => {
   if (form.dataset.form === 'add-custom') addCustom(form);
   if (form.dataset.form === 'weight') addWeight(form);
   if (form.dataset.form === 'recipe') submitRecipe(form);
+  if (form.dataset.form === 'eaten-out') submitEatenOut(form);
   if (form.dataset.form === 'exercise') submitExercise(form);
 });
 
