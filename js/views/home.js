@@ -10,7 +10,7 @@ import { dayTotals, eatenRows, eatButton, planDate, replacedKeys, mealKey } from
 import {
   activityHint, activityButton, activitiesBetween, activityKcal, kcalNote, isoDay,
 } from '../activity.js';
-import { sorenessCard, sorenessButton } from '../soreness.js';
+import { sorenessCard, sorenessButton, skippedText } from '../soreness.js';
 import { dayContent } from './plan.js';
 import { ui, esc, n0, isStandalone, fmtDate } from '../ui.js';
 
@@ -33,8 +33,10 @@ function viewToday() {
         <div style="margin-top:12px"><a class="btn white block" href="#/workout">Training fortsetzen</a></div>
       </div>`;
   } else {
-    const key = today.planned || nextSessionKey();
-    const preview = buildWorkout(key, phase.key);
+    const next = today.planned ? today : calendarDays(dateOnly(new Date()), 14).find((d) => d.planned);
+    const key = next?.planned || nextSessionKey();
+    const preview = buildWorkout(key, phase.key, next?.date || new Date());
+    const sore = skippedText(preview);
     const label = today.done ? 'Heute schon trainiert ✅ – Nächstes Training' : today.planned ? 'Heute ist Trainingstag' : 'Ruhetag – nächstes Training';
     const blocks = preview.blocks.map((b) => b.map((i) => esc(getPath(preview.entries[i].pathId).levels[preview.entries[i].level].name)).join(' + ')).join(' · ');
     hero = `
@@ -42,6 +44,7 @@ function viewToday() {
         <div class="muted small">${label}</div>
         <h3>${SESSIONS[key].name} · ca. ${estimateMinutes(preview)} Min</h3>
         <div class="muted small">${blocks}</div>
+        ${sore ? `<div class="small" style="margin-top:6px">${esc(sore)}</div>` : ''}
         <div style="margin-top:12px"><button class="btn white block" data-action="start-workout" data-key="${key}">Training starten</button></div>
       </div>`;
   }

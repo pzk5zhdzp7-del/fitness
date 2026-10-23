@@ -1,6 +1,8 @@
 import { PATHS, SESSIONS, WARMUP, getPath } from './data/skills.js';
 import { MOBILITY, getMobility } from './data/mobility.js';
 import { state, save, mondayIso } from './store.js';
+import { pathMuscles } from './data/muscles.js';
+import { soreBlock } from './soreness.js';
 
 /* ---------- Periodisierung ---------- */
 
@@ -161,9 +163,10 @@ export function cooldownItems() {
   return Array.from({ length: n }, (_, i) => list[(offset + i) % list.length]);
 }
 
-export function buildWorkout(key, phase = phaseInfo().key) {
+export function buildWorkout(key, phase = phaseInfo().key, date = new Date()) {
   const entries = [];
   const blocks = [];
+  const skipped = []; // ab mittlerem Muskelkater fällt die Übung aus
   for (const block of SESSIONS[key].blocks) {
     const idxs = [];
     for (const pathId of block) {
@@ -172,6 +175,12 @@ export function buildWorkout(key, phase = phaseInfo().key) {
       if (!res) continue;
       const path = getPath(pathId);
       const level = path.levels[res.idx];
+      const { muscles, muscles2 } = pathMuscles(pathId);
+      const sore = soreBlock(muscles, muscles2, date);
+      if (sore.length) {
+        skipped.push({ name: level.name, muscles: sore });
+        continue;
+      }
       const sets = phaseSets(level, phase);
       const last = lastEntry(pathId, res.idx);
       idxs.push(entries.length);
@@ -215,7 +224,7 @@ export function buildWorkout(key, phase = phaseInfo().key) {
   const cooldown = state.settings.cooldown ? cooldownItems() : [];
   steps.push(...mobilitySteps(cooldown, 'Cool-down'));
 
-  return { kind: 'strength', session: key, phase, started: null, entries, blocks, steps, pos: 0, stepStart: null };
+  return { kind: 'strength', session: key, phase, started: null, entries, blocks, skipped, steps, pos: 0, stepStart: null };
 }
 
 export function buildMobilityWorkout() {

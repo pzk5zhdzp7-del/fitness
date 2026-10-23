@@ -14,7 +14,7 @@ Eine Web-App (PWA) fürs iPhone, die sich wie eine normale App auf den Home-Bild
 - **Übungsübersicht**: jede Übung für den Plan an- oder abwählbar (abgewählt → nächstleichtere Variante)
 - **Eigene Übungen** mit einer oder mehreren Stufen, laufen in Ganzkörper A, B oder beiden mit
 - **Fortschritt**: Statistik, Sätze pro Woche, Stufen je Skill, Meilensteine, Bestleistungen, Körpergewicht, Trainingsverlauf
-- **Muskelkater** je Muskelpartie eintragen (leicht, mittel, stark) über eine antippbare Muskelgrafik. Die Startseite zeigt, welche Übungen im nächsten Training betroffen sind, im Training gibt es bei betroffenen Übungen einen Hinweis
+- **Muskelkater** je Muskelpartie eintragen (leicht, mittel, stark) über eine antippbare Muskelgrafik. Er wird jeden Tag eine Stufe schwächer. Ab mittlerem Muskelkater fallen Übungen für diese Muskeln aus dem Training (in der Gym-App wird wenn möglich eine andere Variante ohne diese Muskeln gewählt), bei leichtem gibt es einen Hinweis
 
 **Ernährung**
 - Kalorien- und Eiweißziel aus Körperdaten, Wochenplan mit Rezepten, Portionen automatisch angepasst, Gerichte tauschbar, vegetarisch und Reste-Modus optional

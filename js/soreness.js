@@ -1,15 +1,17 @@
 // Muskelkater je Muskelpartie: 1 = leicht, 2 = mittel, 3 = stark.
-// Ein Eintrag pro Tag. Er gilt am Tag selbst und am Tag danach, bis ein neuer kommt.
+// Ein Eintrag pro Tag, danach wird er jeden Tag eine Stufe schwächer, bis ein neuer kommt.
+// Ab mittlerem Muskelkater fallen Übungen für diese Muskeln aus dem Training (siehe training.js).
 import { state, save } from './store.js';
 import { esc, fmtDate, openSheet, closeSheet, rerender } from './ui.js';
 import { soreMap } from './body.js';
 import { isoDay } from './activity.js';
 
 export const SORE = ['–', 'leicht', 'mittel', 'stark'];
+export const SORE_SKIP = 2; // ab dieser Stufe wird der Muskel nicht trainiert
 const DAY = 86400000;
 
 // Die App liefert Muskelnamen und die Übungen ihrer Trainings (siehe app.js).
-// Ein Training: { date, name, items: [{ name, muscles, muscles2 }] }
+// Ein Training: { date, name, items: [{ name, muscles, muscles2 }], skipped, swapped }
 let cfg = { muscles: {}, lastWorkout: () => null, nextWorkout: () => null };
 export function configureSoreness(c) {
   cfg = { ...cfg, ...c };
@@ -29,24 +31,45 @@ function entries() {
   return state.soreness;
 }
 
-// Aktueller Muskelkater (heute oder gestern eingetragen), sonst null
+// Muskelkater an einem Tag: letzter Eintrag bis dahin, je Tag eine Stufe weniger. Sonst null.
+export function sorenessOn(date = new Date()) {
+  const iso = isoDay(date);
+  const e = entries().filter((x) => x.date <= iso).sort((a, b) => (a.date < b.date ? -1 : 1)).pop();
+  if (!e) return null;
+  const days = Math.round((day(iso) - day(e.date)) / DAY);
+  const levels = {};
+  for (const [m, l] of Object.entries(e.levels)) if (l - days > 0) levels[m] = l - days;
+  return Object.keys(levels).length ? { date: e.date, days, levels } : null;
+}
+
 export function currentSoreness() {
-  const yesterday = isoDay(Date.now() - DAY);
-  const e = entries().filter((x) => x.date >= yesterday && x.date <= isoDay()).sort((a, b) => (a.date < b.date ? -1 : 1)).pop();
-  return e && Object.keys(e.levels).length ? e : null;
+  return sorenessOn();
 }
 
 // Betroffene Muskeln einer Übung; Hilfsmuskeln zählen eine Stufe schwächer
-export function soreHits(muscles = [], muscles2 = []) {
-  const e = currentSoreness();
+export function soreHits(muscles = [], muscles2 = [], date = new Date()) {
+  const e = sorenessOn(date);
   if (!e) return [];
   return [...new Set([...muscles, ...muscles2])]
     .filter((m) => e.levels[m])
     .map((m) => ({ m, level: e.levels[m], weight: muscles.includes(m) ? e.levels[m] : e.levels[m] - 1 }));
 }
 
-function affected(item) {
-  return soreHits(item.muscles, item.muscles2).some((h) => h.weight > 0);
+// Muskeln, wegen denen eine Übung an diesem Tag ausfällt (leer = darf trainiert werden)
+export function soreBlock(muscles, muscles2, date = new Date()) {
+  return soreHits(muscles, muscles2, date).filter((h) => h.weight >= SORE_SKIP).map((h) => cfg.muscles[h.m] || h.m);
+}
+
+function affected(item, date) {
+  return soreHits(item.muscles, item.muscles2, date).some((h) => h.weight > 0);
+}
+
+// Kurzer Hinweis für die Trainingsvorschau: was wegen Muskelkater ausfällt oder ersetzt wird
+export function skippedText(w) {
+  const parts = [];
+  if (w.swapped?.length) parts.push(`ersetzt: ${w.swapped.map((x) => `${x.from} → ${x.to}`).join(', ')}`);
+  if (w.skipped?.length) parts.push(`fällt aus: ${w.skipped.map((x) => x.name).join(', ')}`);
+  return parts.length ? `😣 Wegen Muskelkater ${parts.join('; ')}` : '';
 }
 
 function levelText(levels) {
@@ -61,11 +84,9 @@ export function soreNote(muscles, muscles2) {
   if (!hits.length) return '';
   const worst = Math.max(...hits.map((h) => h.weight));
   const names = hits.map((h) => `${cfg.muscles[h.m] || h.m} ${SORE[h.level]}`).join(', ');
-  const tip = worst >= 3
-    ? 'Heute lieber leichter: weniger Sätze, weniger Last oder eine leichtere Variante. Sticht es, die Übung auslassen.'
-    : worst >= 2
-      ? 'Gründlich aufwärmen und sauber trainieren. Lockere Bewegung hilft sogar, solange nichts sticht.'
-      : 'Normal trainieren ist in Ordnung.';
+  const tip = worst >= SORE_SKIP
+    ? 'Diese Muskeln sollten heute Pause haben. Lass die Übung lieber aus.'
+    : 'Leichter Muskelkater: trainieren ist in Ordnung, gründlich aufwärmen.';
   return `<div class="card small sore-note">😣 <b>Muskelkater:</b> ${esc(names)}. ${tip}</div>`;
 }
 
@@ -78,14 +99,19 @@ export function sorenessCard() {
   const e = currentSoreness();
   if (!e) return '';
   const next = cfg.nextWorkout();
-  const hit = next ? next.items.filter(affected).map((i) => i.name) : [];
+  const hit = next ? next.items.filter((i) => affected(i, next.date)).map((i) => i.name) : [];
+  const out = next ? skippedText(next) : '';
+  const since = e.days === 0 ? 'heute eingetragen' : e.days === 1 ? 'seit gestern' : `seit ${fmtDate(day(e.date), { weekday: 'long' })}`;
   return `
     <div class="card flex sore-card">
       <div class="sore-mini">${soreMap(e.levels)}</div>
       <div class="grow">
-        <b>Muskelkater</b> <span class="small muted">· ${e.date === isoDay() ? 'heute eingetragen' : 'seit gestern'}</span>
+        <b>Muskelkater</b> <span class="small muted">· ${since}</span>
         <div class="small">${esc(levelText(e.levels))}</div>
-        ${hit.length ? `<div class="small muted" style="margin-top:4px">Betrifft im nächsten Training: ${esc(hit.join(', '))}</div>` : next ? '<div class="small muted" style="margin-top:4px">Das nächste Training ist davon kaum betroffen.</div>' : ''}
+        <div class="small muted">Wird jeden Tag eine Stufe schwächer.</div>
+        ${out ? `<div class="small" style="margin-top:4px">Nächstes Training: ${esc(out.replace('😣 Wegen Muskelkater ', ''))}</div>` : ''}
+        ${hit.length ? `<div class="small muted" style="margin-top:4px">Mit leichtem Muskelkater dabei: ${esc(hit.join(', '))}</div>` : ''}
+        ${next && !out && !hit.length ? '<div class="small muted" style="margin-top:4px">Das nächste Training ist davon nicht betroffen.</div>' : ''}
         <div class="flex" style="margin-top:8px">
           <button class="btn secondary small" data-action="sore-start">Ändern</button>
           <button class="btn ghost small" data-action="sore-gone">Ist weg ✓</button>
@@ -139,7 +165,7 @@ function start(date) {
   const past = iso !== isoDay();
   openSheet(`
     <h3>😣 Muskelkater${past ? ` am ${fmtDate(day(iso), { weekday: 'long', day: 'numeric', month: 'long' })}` : ''}</h3>
-    <p class="small muted">Wo spürst du ihn und wie stark? Beim Training siehst du dann, welche Übungen betroffen sind.</p>
+    <p class="small muted">Wo spürst du ihn und wie stark? Ab mittel fallen Übungen für diese Muskeln aus dem Training. Jeden Tag wird der Muskelkater automatisch eine Stufe schwächer.</p>
     <div id="sore-edit">${editor()}</div>
     <button class="btn block" data-action="sore-save" style="margin-top:8px">Speichern</button>
     ${own && past ? `<button class="btn ghost block" data-action="sore-delete" style="margin-top:8px">Eintrag löschen</button>` : ''}

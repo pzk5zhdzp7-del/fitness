@@ -6,6 +6,7 @@ import {
 } from '../training.js';
 import { esc, fmtDate, unitOf, openSheet, rerender } from '../ui.js';
 import { activitiesOn, activityRow, calendarMark, activityButton, isoDay } from '../activity.js';
+import { skippedText } from '../soreness.js';
 
 const DAY = 86400000;
 
@@ -70,7 +71,8 @@ export function dayContent(date, key) {
   if (acts.length) body += `<h2>Anderes Training</h2><div class="list">${acts.map((a) => activityRow(a, false)).join('')}</div>`;
 
   if (key) {
-    const w = buildWorkout(key, phase.key);
+    const w = buildWorkout(key, phase.key, date);
+    const sore = skippedText(w);
     body += `<h2>Geplant: ${SESSIONS[key].name} · ca. ${estimateMinutes(w)} Min</h2>
       <div class="list">${w.blocks.map((b) => {
         const rows = b.map((i) => {
@@ -81,6 +83,7 @@ export function dayContent(date, key) {
         }).join('');
         return b.length > 1 ? `<div class="ss-group"><div class="ss-label">Supersatz · im Wechsel</div>${rows}</div>` : rows;
       }).join('')}</div>
+      ${sore ? `<p class="small">${esc(sore)}</p>` : ''}
       <p class="small muted">Die Ziele passen sich nach jedem Training an deine Leistung an.</p>`;
     if (dateOnly(date).getTime() === dateOnly(new Date()).getTime() && !state.activeWorkout) {
       body += `<button class="btn block" data-action="start-workout" data-key="${key}">Jetzt starten</button>`;
