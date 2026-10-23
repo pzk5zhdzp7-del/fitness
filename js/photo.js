@@ -9,10 +9,12 @@ import { esc, n0, openSheet, closeSheet, rerender, WEEKDAYS, WEEK_ORDER } from '
 const KEY_STORE = 'claude-api-key'; // bewusst getrennt vom Backup, damit der Schlüssel nicht exportiert wird
 const MODEL = 'claude-opus-5-5';
 
-const PROMPT = `Schätze die Nährwerte der Mahlzeit auf dem Foto, so wie sie auf dem Teller liegt (eine Person).
-Achte auf Portionsgröße, Öl, Soßen und Beilagen. Lieber realistisch als zu niedrig schätzen.
+const PROMPT_PHOTO = 'Schätze die Nährwerte der Mahlzeit auf dem Foto, so wie sie auf dem Teller liegt (eine Person).';
+const PROMPT_TEXT = 'Schätze die Nährwerte dieser Mahlzeit (eine Person, übliche Portion, wenn nichts anderes dasteht).';
+const PROMPT_REST = `Achte auf Portionsgröße, Öl, Soßen und Beilagen. Lieber realistisch als zu niedrig schätzen.
+Bei "mahlzeit" trägst du ein, ob in der Beschreibung steht, zu welcher Mahlzeit gegessen wurde (fruehstueck, mittag, abend, snack), sonst "unklar".
 Antworte nur mit diesem JSON, ohne weiteren Text:
-{"gericht": "kurzer Name auf Deutsch", "kcal": 0, "eiweiss": 0, "kohlenhydrate": 0, "fett": 0, "hinweis": "kurz, was du angenommen hast"}`;
+{"gericht": "kurzer Name auf Deutsch", "kcal": 0, "eiweiss": 0, "kohlenhydrate": 0, "fett": 0, "mahlzeit": "unklar", "hinweis": "kurz, was du angenommen hast"}`;
 
 const SCHEMA = {
   type: 'object',
@@ -22,9 +24,10 @@ const SCHEMA = {
     eiweiss: { type: 'number' },
     kohlenhydrate: { type: 'number' },
     fett: { type: 'number' },
+    mahlzeit: { type: 'string', enum: ['fruehstueck', 'mittag', 'abend', 'snack', 'unklar'] },
     hinweis: { type: 'string' },
   },
-  required: ['gericht', 'kcal', 'eiweiss', 'kohlenhydrate', 'fett', 'hinweis'],
+  required: ['gericht', 'kcal', 'eiweiss', 'kohlenhydrate', 'fett', 'mahlzeit', 'hinweis'],
   additionalProperties: false,
 };
 
@@ -195,20 +198,20 @@ function start(dayIdx, replaces = guessSlot(dayIdx)) {
     </div>
     <button class="btn secondary block" data-action="eo-recipe" data-day="${dayIdx}">Rezept übernehmen</button>
     <button class="btn ghost block" data-action="eo-manual" data-day="${dayIdx}" style="margin-top:8px">Werte selbst eintragen</button>
-    <h2>📷 Foto, Claude schätzt</h2>
-    <label class="btn block">
-      Foto aufnehmen oder auswählen
+    <h2>✍️ Beschreiben, Claude schätzt</h2>
+    <div class="list">
+      <label class="field"><span>Was hast du gegessen?</span><textarea id="eo-note" rows="2" placeholder="z. B. ein Döner zum Abendessen"></textarea></label>
+    </div>
+    <label class="btn secondary block">
+      Foto dazu (optional)
       <input type="file" accept="image/*" id="eo-file" hidden>
     </label>
     <img id="eo-preview" alt="" style="display:none;width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-top:10px">
-    <div class="list" style="margin-top:10px">
-      <label class="field"><span>Ergänzung (optional)</span><input id="eo-note" autocomplete="off" placeholder="z. B. große Portion, ohne Pommes gegessen"></label>
-    </div>
-    <p class="small warn" id="eo-error"></p>
+    <p class="small warn" id="eo-error" style="margin-bottom:8px"></p>
     ${hasKey ? `
       <button class="btn block" data-action="eo-estimate" data-day="${dayIdx}">Mit Claude schätzen</button>
     ` : `
-      <div class="card small">Ohne API-Schlüssel läuft die Schätzung über die Claude-App: Foto und Anfrage teilen, die Antwort kopieren und hier einfügen.</div>
+      <div class="card small">Ohne API-Schlüssel läuft die Schätzung über die Claude-App: Anfrage (und Foto) teilen, die Antwort kopieren und hier einfügen.</div>
       <button class="btn block" data-action="eo-share">1. An Claude schicken</button>
       <div class="list" style="margin-top:10px">
         <label class="field"><span>2. Antwort von Claude hier einfügen</span><textarea id="eo-answer" rows="3" placeholder='{"gericht": …}'></textarea></label>
@@ -217,7 +220,7 @@ function start(dayIdx, replaces = guessSlot(dayIdx)) {
     `}
     <details class="card small" style="margin-top:10px">
       <summary>Automatisch mit eigenem API-Schlüssel</summary>
-      <p>Mit einem Schlüssel aus der <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console</a> schätzt die App direkt, ohne Umweg über die Claude-App. Ein Foto kostet etwa 1 bis 3 Cent vom Guthaben dort. Der Schlüssel bleibt nur auf diesem Gerät und ist nicht im Backup.</p>
+      <p>Mit einem Schlüssel aus der <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic Console</a> schätzt die App direkt, ohne Umweg über die Claude-App. Eine Schätzung kostet etwa 1 bis 3 Cent vom Guthaben dort. Der Schlüssel bleibt nur auf diesem Gerät und ist nicht im Backup.</p>
       <input id="eo-key" type="password" autocomplete="off" placeholder="sk-ant-…" value="${hasKey ? '••••••••' : ''}">
       <div class="flex" style="gap:8px;margin-top:8px">
         <button class="btn secondary small" data-action="eo-key-save" data-day="${dayIdx}">Speichern</button>
@@ -255,21 +258,27 @@ async function loadPhoto(file) {
   }
 }
 
-function promptText() {
-  const note = document.getElementById('eo-note')?.value.trim();
-  return note ? `${PROMPT}\n\nErgänzung: ${note}` : PROMPT;
+function note() {
+  return document.getElementById('eo-note')?.value.trim() || '';
 }
+
+function promptText() {
+  if (!photo) return `${PROMPT_TEXT}\n${PROMPT_REST}\n\nMahlzeit: ${note()}`;
+  return note() ? `${PROMPT_PHOTO}\n${PROMPT_REST}\n\nErgänzung: ${note()}` : `${PROMPT_PHOTO}\n${PROMPT_REST}`;
+}
+
+const MISSING = 'Bitte beschreibe kurz, was du gegessen hast, oder nimm ein Foto auf.';
 
 function chosenReplace() {
   return document.getElementById('eo-replaces')?.value || '';
 }
 
 async function estimate(dayIdx, btn) {
-  if (!photo) return error('Bitte zuerst ein Foto aufnehmen.');
+  if (!photo && !note()) return error(MISSING);
   const replaces = chosenReplace();
   error('');
   btn.disabled = true;
-  btn.textContent = 'Claude schaut sich das Foto an …';
+  btn.textContent = photo ? 'Claude schaut sich das Foto an …' : 'Claude schätzt …';
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -288,7 +297,7 @@ async function estimate(dayIdx, btn) {
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: photo.data } },
+            ...(photo ? [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: photo.data } }] : []),
             { type: 'text', text: promptText() },
           ],
         }],
@@ -300,9 +309,10 @@ async function estimate(dayIdx, btn) {
       if (res.status === 400 && /credit/i.test(body.error?.message || '')) throw new Error('Kein Guthaben mehr in der Anthropic Console.');
       throw new Error(body.error?.message || `Fehler ${res.status}`);
     }
-    if (body.stop_reason === 'refusal') throw new Error('Claude konnte das Foto nicht auswerten.');
+    if (body.stop_reason === 'refusal') throw new Error('Claude konnte das nicht auswerten.');
     const text = (body.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
-    review(dayIdx, parseAnswer(text), replaces);
+    const est = parseAnswer(text);
+    review(dayIdx, est, slotFrom(dayIdx, est.meal, replaces));
   } catch (e) {
     btn.disabled = false;
     btn.textContent = 'Mit Claude schätzen';
@@ -321,14 +331,25 @@ function parseAnswer(text) {
     throw new Error('Die Antwort ließ sich nicht lesen. Bitte die ganze Antwort von Claude einfügen.');
   }
   const n = (v) => Math.max(0, Math.round(parseFloat(String(v ?? 0).replace(',', '.')) || 0));
-  return { name: String(j.gericht || 'Etwas anderes'), kcal: n(j.kcal), p: n(j.eiweiss), c: n(j.kohlenhydrate), f: n(j.fett), note: String(j.hinweis || '') };
+  return { name: String(j.gericht || 'Etwas anderes'), kcal: n(j.kcal), p: n(j.eiweiss), c: n(j.kohlenhydrate), f: n(j.fett), meal: String(j.mahlzeit || ''), note: String(j.hinweis || '') };
+}
+
+// Steht in der Beschreibung „zum Abendessen“ o. Ä., wird die passende Mahlzeit im Plan ersetzt
+function slotFrom(dayIdx, meal, fallback) {
+  const slot = { fruehstueck: 'breakfast', mittag: 'lunch', abend: 'dinner' }[meal];
+  if (meal === 'snack') return '';
+  if (!slot) return fallback;
+  const key = `${slot}:0`;
+  const day = ensurePlan().days[dayIdx];
+  const free = dayMeals(day).some((m) => mealKey(m) === key) && !replacedKeys(planDate(dayIdx)).has(key);
+  return free ? key : fallback;
 }
 
 async function share() {
-  if (!photo) return error('Bitte zuerst ein Foto aufnehmen.');
+  if (!photo && !note()) return error(MISSING);
   error('');
   const text = promptText();
-  const data = { files: [photo.file], text };
+  const data = photo ? { files: [photo.file], text } : { text };
   try { await navigator.clipboard.writeText(text); } catch { /* nicht schlimm */ }
   if (navigator.canShare && navigator.canShare(data)) {
     try {
@@ -338,7 +359,7 @@ async function share() {
       if (e.name === 'AbortError') return;
     }
   }
-  error('Die Anfrage ist kopiert. Öffne die Claude-App, hänge das Foto an, füge den Text ein und schicke ihn ab.');
+  error(`Die Anfrage ist kopiert. Öffne die Claude-App, ${photo ? 'hänge das Foto an, ' : ''}füge den Text ein und schicke ihn ab.`);
 }
 
 // Formular zum Prüfen und Korrigieren, vor dem Speichern
@@ -357,7 +378,7 @@ function review(dayIdx, est, replaces, id = null) {
         ${field('f', 'Fett (g)', est.f)}
         <label class="field"><span>Eintragen</span><select name="replaces">${replaceOptions(dayIdx, replaces)}</select></label>
       </div>
-      <p class="small muted">Fotos sind nur eine Schätzung. Korrigiere die Werte, wenn du es besser weißt.</p>
+      <p class="small muted">Das ist nur eine Schätzung. Korrigiere die Werte, wenn du es besser weißt.</p>
       <p class="small warn" id="eo-error"></p>
       <button class="btn block" type="submit">Speichern</button>
       <button class="btn secondary block" type="button" data-action="close-sheet" style="margin-top:8px">Abbrechen</button>
@@ -413,7 +434,8 @@ export const photoActions = {
     }
     if (!box.value.trim()) return error('Bitte die Antwort von Claude einfügen.');
     try {
-      review(Number(el.dataset.day), parseAnswer(box.value), chosenReplace());
+      const est = parseAnswer(box.value);
+      review(Number(el.dataset.day), est, slotFrom(Number(el.dataset.day), est.meal, chosenReplace()));
     } catch (e) {
       error(e.message);
     }
