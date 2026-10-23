@@ -4,6 +4,7 @@ import { PATHS } from '../data/skills.js';
 import { currentLevel, setLevel } from '../training.js';
 import { targets, dayMacros, ensurePlan, GOALS, ACTIVITY } from '../nutrition.js';
 import { esc, n0, WEEKDAYS, WEEK_ORDER, openSheet, closeSheet, rerender } from '../ui.js';
+import { healthSettings } from '../health.js';
 import {
   isLinked, syncStatus, members, inviteText, createHousehold, joinHousehold, unlink, validDbUrl,
 } from '../sync.js';
@@ -106,6 +107,9 @@ export function viewProfile() {
       ${toggle('data-profile-bool', 'leftovers', p.leftovers, 'Reste-Modus', 'Mittags gibt\'s das Abendessen vom Vortag – halb so oft kochen.')}
     </div>
     <p class="small muted">Diese beiden Optionen gelten ab dem nächsten neuen Wochenplan.</p>
+
+    <h2>Apple Watch</h2>
+    ${healthSettings()}
 
     <h2>Gemeinsam planen</h2>
     ${syncSection()}

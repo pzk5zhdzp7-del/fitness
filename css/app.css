@@ -486,3 +486,13 @@ main { overflow-x: clip; }
 .sore-seg button.on.s1 { background: #fdba74; border-color: #fdba74; color: #111827; }
 .sore-seg button.on.s2 { background: #f97316; border-color: #f97316; color: #fff; }
 .sore-seg button.on.s3 { background: #dc2626; border-color: #dc2626; color: #fff; }
+
+/* Apple Watch */
+.watch-stats { grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 6px; margin-top: 10px; }
+.watch-stats .card { padding: 10px 6px; background: var(--bg); box-shadow: none; }
+.card .sore-note { padding: 8px 10px; border-radius: 10px; }
+.watch-stats .big { font-size: 20px; }
+.watch-stats .small { font-size: 12px; }
+.guide { padding-left: 20px; line-height: 1.45; }
+.guide li { margin-bottom: 8px; }
+.guide code { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--card-2, rgba(127, 127, 127, 0.12)); font-size: 12px; white-space: pre-wrap; word-break: break-word; }

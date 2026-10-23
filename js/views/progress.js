@@ -9,6 +9,7 @@ import {
 } from '../ui.js';
 import { activityList, activityButton } from '../activity.js';
 import { sorenessList } from '../soreness.js';
+import { healthProgress } from '../health.js';
 
 export function viewProgress() {
   const strength = strengthHistory();
@@ -73,7 +74,8 @@ export function viewProgress() {
     ${activityButton()}
     <h2>Muskelkater</h2>
     ${sorenessList()}
-    <button class="btn secondary block" data-action="sore-start">😣 Muskelkater eintragen</button>`;
+    <button class="btn secondary block" data-action="sore-start">😣 Muskelkater eintragen</button>
+    ${healthProgress()}`;
 }
 
 export function viewPath(id) {

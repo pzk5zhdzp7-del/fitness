@@ -53,6 +53,7 @@ const DEFAULTS = {
   recipeOff: [], // abgewählte Rezepte, kommen nicht in den Wochenplan
   sync: {}, // { db, code, name, member } = gemeinsamer Ernährungsplan (siehe sync.js)
   syncQueue: [],
+  health: { days: {} }, // Werte der Apple Watch je Tag (siehe health.js)
 };
 
 function clone(v) {

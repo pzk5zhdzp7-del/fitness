@@ -12,6 +12,7 @@ import {
 } from '../activity.js';
 import { sorenessCard, sorenessButton, skippedText } from '../soreness.js';
 import { dayContent } from './plan.js';
+import { healthCard } from '../health.js';
 import { ui, esc, n0, isStandalone, fmtDate } from '../ui.js';
 
 function viewToday() {
@@ -74,6 +75,7 @@ function viewToday() {
     ${hero}
     ${hint}
     ${sorenessCard()}
+    ${healthCard()}
     ${mobCard}
     <div class="card">
       <div class="flex between"><b>Diese Woche</b><span class="pill ${done >= goal ? 'good' : ''}">${done} / ${goal} Trainings</span></div>
@@ -163,6 +165,7 @@ function viewDay(date) {
       <b>${phase.name}</b> <span class="small muted">· Woche ${phase.weekInPhase}/${phase.weeks}</span>
     </div>
     ${training}
+    ${healthCard(date)}
     ${past ? activityButton('🏃 Anderes Training an diesem Tag', isoDay(date)) : ''}
     ${foodSection(date, `Essen ${DAY_NAMES[ui.homeOffset]?.toLowerCase() || `am ${fmtDate(date, { weekday: 'long' })}`}`)}`;
 }
