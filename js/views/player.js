@@ -4,6 +4,8 @@ import { state, save } from '../store.js';
 import { WARMUP, SESSIONS, getPath } from '../data/skills.js';
 import { getMobility } from '../data/mobility.js';
 import { PHASES, finishWorkout, setLevel } from '../training.js';
+import { pathMuscles } from '../data/muscles.js';
+import { soreNote } from '../soreness.js';
 import {
   ui, esc, unitOf, fmtClock, fmtRange, videoLink, openSheet, closeSheet, beep, speak, rerender,
 } from '../ui.js';
@@ -140,6 +142,7 @@ function setCard(w, st) {
   const level = path.levels[e.level];
   const target = e.targets[st.s];
   const unit = unitOf(e);
+  const { muscles, muscles2 } = pathMuscles(e.pathId);
   const sets = Array.from({ length: e.sets }, (_, i) => {
     const v = e.logged[i];
     const cls = v != null ? (v >= e.targets[i] ? 'done' : 'short') : i === st.s ? 'next' : '';
@@ -176,6 +179,7 @@ function setCard(w, st) {
         <div class="big">${target} <span class="unit">${unit}${level.side ? ' je Seite' : ''}</span></div>
         <div class="small muted">Bereich ${fmtRange(level)}${e.last ? ` · letztes Mal ${e.last.join(' · ')}` : ''}</div>
       </div>
+      ${st.s === 0 ? soreNote(muscles, muscles2) : ''}
       <div class="sets">${sets}</div>
       ${input}
       <details><summary>Ausführung</summary><p class="small">${esc(level.cues)}</p>${videoLink(level.name)}</details>

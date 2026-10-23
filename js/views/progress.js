@@ -8,6 +8,7 @@ import {
   esc, fmtDate, fmtTarget, unitOf, videoLink, openSheet, lineChart, barChart, rerender,
 } from '../ui.js';
 import { activityList, activityButton } from '../activity.js';
+import { sorenessList } from '../soreness.js';
 
 export function viewProgress() {
   const strength = strengthHistory();
@@ -69,7 +70,10 @@ export function viewProgress() {
     ${hist ? `<div class="list">${hist}</div>` : '<div class="empty">Noch keine Trainings. Los geht\'s! 💪</div>'}
     <h2>Anderes Training</h2>
     ${activityList() ? `<div class="list">${activityList()}</div>` : '<p class="small muted">Fußball, Joggen, Radtour? Beschreib es kurz, Claude trägt es ein.</p>'}
-    ${activityButton()}`;
+    ${activityButton()}
+    <h2>Muskelkater</h2>
+    ${sorenessList()}
+    <button class="btn secondary block" data-action="sore-start">😣 Muskelkater eintragen</button>`;
 }
 
 export function viewPath(id) {

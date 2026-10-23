@@ -457,3 +457,32 @@ main { overflow-x: clip; }
 .eat.on { background: var(--good); border-color: var(--good); }
 .eat-spacer { flex: none; width: 30px; }
 .row-btn { display: flex; align-items: center; gap: 12px; }
+.bodycard { display: flex; flex-direction: column; gap: 8px; }
+.bodymap { width: 100%; max-width: 320px; margin: 0 auto; display: block; }
+.bodymap .sil > * { fill: var(--line); }
+.bodymap .m0 { fill: var(--line); stroke: var(--card); stroke-width: 0.6; }
+.bodymap .m1 { fill: var(--accent); stroke: var(--card); stroke-width: 0.6; }
+.bodymap .m2 { fill: var(--accent); fill-opacity: 0.4; stroke: var(--card); stroke-width: 0.6; }
+.bodymap text { font-size: 7px; fill: var(--muted); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--accent); }
+.dot.m2 { opacity: 0.4; }
+.row-btn { display: flex; align-items: center; gap: 12px; }
+
+/* Muskelkater */
+.bodymap .s0, .bodymap .s1, .bodymap .s2, .bodymap .s3 { stroke: var(--card); stroke-width: 0.6; }
+.bodymap .s0 { fill: var(--line); }
+.bodymap .s1 { fill: #fdba74; }
+.bodymap .s2 { fill: #f97316; }
+.bodymap .s3 { fill: #dc2626; }
+.bodymap.tap .s0 { fill: var(--muted); fill-opacity: 0.3; }
+.bodymap.tap [data-m] { cursor: pointer; }
+.sore-card { align-items: flex-start; }
+.sore-mini { width: 96px; flex: none; }
+.sore-note { background: var(--warn-soft); }
+.sore-row { padding-top: 8px; padding-bottom: 8px; gap: 8px; }
+.sore-seg { display: flex; gap: 3px; flex: none; }
+.sore-seg button { font: inherit; font-size: 12px; padding: 6px 7px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.sore-seg button.on.s0 { background: var(--muted); border-color: var(--muted); color: var(--card); }
+.sore-seg button.on.s1 { background: #fdba74; border-color: #fdba74; color: #111827; }
+.sore-seg button.on.s2 { background: #f97316; border-color: #f97316; color: #fff; }
+.sore-seg button.on.s3 { background: #dc2626; border-color: #dc2626; color: #fff; }

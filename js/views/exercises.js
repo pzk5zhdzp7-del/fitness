@@ -4,6 +4,9 @@ import { PATHS, WARMUP, getPath } from '../data/skills.js';
 import { GROUPS, ICONS, savePath, deletePath } from '../custom.js';
 import { MOBILITY, getMobility } from '../data/mobility.js';
 import { currentLevel, resolveLevel, setLevel, pathHistory } from '../training.js';
+import { MUSCLES, pathMuscles } from '../data/muscles.js';
+import { bodyMap } from '../body.js';
+import { soreNote } from '../soreness.js';
 import { esc, fmtTarget, unitOf, fmtDate, videoLink, openSheet, closeSheet, lineChart, rerender } from '../ui.js';
 
 function off(p) {
@@ -65,11 +68,16 @@ function exInfo(pathId, idx) {
   const l = p.levels[idx];
   const hist = pathHistory(pathId).filter((h) => h.level === idx);
   const cur = currentLevel(pathId).idx === idx;
+  const { muscles, muscles2 } = pathMuscles(pathId);
   openSheet(`
     <div class="small muted">${p.icon} ${esc(p.name)} · Stufe ${idx + 1}/${p.levels.length}</div>
     <h3>${esc(l.name)}</h3>
     <div class="small muted">Grundziel: ${fmtTarget(l)}</div>
+    ${soreNote(muscles, muscles2)}
     <p>${esc(l.cues)}</p>
+    ${muscles.length ? `<div class="card bodycard">${bodyMap(muscles, muscles2)}
+      <div class="small"><span class="dot m1"></span>${muscles.map((m) => MUSCLES[m]).join(', ')}
+      ${muscles2.length ? `<br><span class="dot m2"></span><span class="muted">${muscles2.map((m) => MUSCLES[m]).join(', ')}</span>` : ''}</div></div>` : ''}
     ${videoLink(l.name)}
     ${hist.length >= 2 ? `<h2>Bester Satz</h2><div class="card">${lineChart(hist.map((h) => h.best))}</div>` : ''}
     ${hist.length ? `<h2>Verlauf</h2><div class="list">${hist.slice(-5).reverse().map((h) => `<div class="row"><div class="grow small">${fmtDate(h.date)}</div><div class="small">${h.sets.join(' · ')} ${unitOf(h)}</div></div>`).join('')}</div>` : '<p class="small muted">Noch nicht trainiert.</p>'}
