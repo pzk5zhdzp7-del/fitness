@@ -24,9 +24,11 @@ Eine Web-App (PWA) fürs iPhone, die sich wie eine normale App auf den Home-Bild
 - „Auswärts gegessen“: Essen fotografieren, Claude schätzt kcal, Eiweiß, Kohlenhydrate und Fett, Werte prüfen und für den Tag eintragen (zusätzlich oder statt einer geplanten Mahlzeit). Ohne Schlüssel über die Claude-App (Teilen und Antwort einfügen), mit eigenem API-Schlüssel direkt in der App
 - „Anderes Training“: Fußball, Joggen & Co. in eigenen Worten beschreiben, Claude macht daraus Einträge (Dauer, Intensität, Mehrverbrauch, Belastung je Körperbereich) und einen Tipp fürs nächste Training. Die Einträge stehen im Kalender und im Verlauf, der Mehrverbrauch erhöht das Kalorienziel des Tages. Läuft über die Claude-App (Teilen und Antwort einfügen), mit dem API-Schlüssel aus „Auswärts gegessen“ auch direkt
 
-**Apple Watch**
-- Schritte, Aktivkalorien, Trainingsminuten, Ruhepuls, HRV und Workouts aus Apple Health übernehmen. Eine Web-App darf Health nicht selbst lesen, deshalb sammelt ein Kurzbefehl („Cali Health“) die Werte des Tages und kopiert sie. Die App startet den Kurzbefehl und bietet danach das Einfügen an. Anleitung zum Einrichten in der App unter Profil → Apple Watch
-- Workouts wie Laufen oder Radfahren werden als „Anderes Training“ eingetragen (mit den kcal der Uhr), Krafttraining nicht doppelt
+**Apple Health** (iPhone allein oder mit Apple Watch)
+- Schritte, Aktivkalorien und Workouts wie Joggen aus Apple Health übernehmen, mit Apple Watch auch Trainingsminuten, Ruhepuls und HRV. Eine Web-App darf Health nicht selbst lesen, deshalb sammelt ein Kurzbefehl („Cali Health“) die Werte des Tages. Anleitung in der App unter Profil → Apple Health
+- Automatisch: Ist „Gemeinsam planen“ verbunden, schickt der Kurzbefehl die Werte per Automation jeden Abend in den Firebase-Speicher (`households/<code>/inbox/<member>`). Die App trägt sie beim nächsten Öffnen ein und löscht sie dort
+- Von Hand: Die App startet den Kurzbefehl und bietet danach das Einfügen aus der Zwischenablage an
+- Workouts wie Laufen oder Radfahren werden als „Anderes Training“ eingetragen (mit den kcal aus Health), Krafttraining nicht doppelt
 - Hinweis auf der Startseite, wenn Ruhepuls oder HRV deutlich schlechter als im Schnitt der letzten 4 Wochen sind
 - Schritte der letzten 7 Tage und Ruhepuls-Verlauf unter Fortschritt
 
@@ -57,7 +59,7 @@ npx http-server -c-1 .
 | `js/nutrition.js` | Kalorienbedarf, Wochenplan, Einkaufsliste |
 | `js/recipes.js` | Eigene Rezepte und Zutaten, Rezepte an/aus |
 | `js/custom.js` | Eigene Übungen |
-| `js/health.js` | Apple-Watch-Werte über einen Kurzbefehl einlesen und anzeigen |
+| `js/health.js` | Werte aus Apple Health über einen Kurzbefehl einlesen (automatisch über Firebase oder per Zwischenablage) und anzeigen |
 | `js/views/*.js` | Ansichten (Heute, Plan, Übungen, Fortschritt, Essen, Profil, Player) |
 | `js/app.js` | Navigation und Ereignisse |
 | `sw.js` | Offline-Cache (bei Änderungen `VERSION` erhöhen) |

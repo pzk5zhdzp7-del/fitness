@@ -18,7 +18,7 @@ import { refreshCustom } from './recipes.js';
 import { photoActions, submitEatenOut } from './photo.js';
 import { activityActions, submitActivity, configureActivity } from './activity.js';
 import { sorenessActions, configureSoreness } from './soreness.js';
-import { healthActions, submitHealth } from './health.js';
+import { healthActions, submitHealth, importInbox } from './health.js';
 
 const $view = document.getElementById('view');
 const $title = document.getElementById('title');
@@ -214,6 +214,7 @@ onRemoteChange(() => {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
     refreshCustom();
+    importInbox();
     const busy = document.activeElement?.matches('input:not([type=checkbox]):not([type=file]), select, textarea');
     const sheetOpen = !document.getElementById('sheet').classList.contains('hidden');
     if (!busy && !sheetOpen) render();

@@ -6,6 +6,7 @@
 // households/<code>/shopping = { weekStart, checked: { zutat: true }, custom: { key: { name, done } } }
 // households/<code>/members  = { <memberId>: { name, kcal, app, off: [abgewählte Rezepte] } }
 // households/<code>/recipes  = { <id>: eigenes Rezept }, ingredients = { <id>: eigene Zutat }
+// households/<code>/inbox/<memberId> = { <pushId>: { text } } = Health-Werte vom Kurzbefehl, nur für diese Person
 import { state, save } from './store.js';
 
 const APP = 'calisthenics';
@@ -347,4 +348,28 @@ export function resetChecks() {
   }
   const custom = Object.fromEntries(Object.entries(remote?.shopping?.custom || {}).filter(([, c]) => !c.done));
   write('/shopping', 'PUT', { weekStart: remote?.shopping?.weekStart, checked: {}, custom });
+}
+
+/* ---------- Health-Werte vom Kurzbefehl ---------- */
+
+// Adresse, an die der Kurzbefehl die Werte des Tages schickt (POST { text })
+export function inboxUrl() {
+  return isLinked() ? `${base()}/inbox/${memberId()}.json` : '';
+}
+
+// Aus dem Live-Abbild (kommt über den Stream an)
+export function inboxEntries() {
+  return isLinked() ? Object.entries(remote?.inbox?.[memberId()] || {}) : [];
+}
+
+// Direkt abfragen, z. B. gleich nach dem Kurzbefehl
+export async function fetchInbox() {
+  if (!isLinked()) return [];
+  const res = await fetch(inboxUrl());
+  if (!res.ok) throw new Error(`Firebase antwortet mit ${res.status}`);
+  return Object.entries((await res.json()) || {});
+}
+
+export function clearInbox(id) {
+  write(`/inbox/${memberId()}/${id}`, 'DELETE', null);
 }

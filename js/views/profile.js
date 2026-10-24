@@ -108,7 +108,7 @@ export function viewProfile() {
     </div>
     <p class="small muted">Diese beiden Optionen gelten ab dem nächsten neuen Wochenplan.</p>
 
-    <h2>Apple Watch</h2>
+    <h2>Apple Health</h2>
     ${healthSettings()}
 
     <h2>Gemeinsam planen</h2>
