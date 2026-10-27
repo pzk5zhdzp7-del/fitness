@@ -496,3 +496,12 @@ main { overflow-x: clip; }
 .guide { padding-left: 20px; line-height: 1.45; }
 .guide li { margin-bottom: 8px; }
 .guide code { display: block; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--card-2, rgba(127, 127, 127, 0.12)); font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+.sc-steps > li { margin-bottom: 14px; }
+.sc-action { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin: 4px 0 6px; }
+.sc-head { display: flex; align-items: center; gap: 8px; }
+.sc-icon { width: 26px; height: 26px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex: none; }
+.sc-body { margin-top: 6px; line-height: 1.9; }
+.sc-tok { display: inline-block; padding: 0 8px; border-radius: 6px; background: #0a84ff; color: #fff; line-height: 1.6; }
+.sc-par { color: #0a84ff; font-weight: 600; }
+.sc-url { font-family: ui-monospace, monospace; font-size: 11px; word-break: break-all; color: #0a84ff; }
+.sc-how { line-height: 1.45; }

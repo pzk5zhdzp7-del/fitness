@@ -159,7 +159,7 @@ export function parseHealth(text) {
     if (!m) continue;
     const key = m[1].toLowerCase().trim();
     const value = m[2].trim();
-    if (/^(datum|date|tag)$/.test(key)) { out.date = parseDate(value); continue; }
+    if (/^(datum|date|tag)$/.test(key)) { out.date = parseDate(value); out.dated = true; continue; }
     if (/^(workout|training)$/.test(key)) {
       if (value) { out.workouts.push(parseWorkout(value)); found++; }
       continue;
@@ -307,6 +307,15 @@ export function submitHealth(form) {
 
 /* ---------- Automatisch aus dem gemeinsamen Speicher ---------- */
 
+// Firebase-Schlüssel von POST enthalten den Zeitpunkt (erste 8 Zeichen, Millisekunden)
+const PUSH_CHARS = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+function pushTime(id) {
+  if (!/^[-\w]{20}$/.test(id)) return null;
+  let t = 0;
+  for (const c of id.slice(0, 8)) t = t * 64 + PUSH_CHARS.indexOf(c);
+  return t > 1.5e12 && t < Date.now() + DAY ? t : null;
+}
+
 // Einträge übernehmen und dort löschen. Gibt die Zahl der übernommenen Tage zurück.
 function takeEntries(entries) {
   let n = 0;
@@ -315,6 +324,9 @@ function takeEntries(entries) {
     handled.add(id);
     try {
       const data = parseHealth(typeof entry === 'string' ? entry : entry?.text || '');
+      // Ohne Datumszeile zählt der Tag, an dem der Kurzbefehl gesendet hat
+      const sent = pushTime(id);
+      if (!data.dated && sent) data.date = isoDay(sent);
       if (data.date <= isoDay()) {
         storeDay(data, data.date, () => true);
         n++;
@@ -424,38 +436,81 @@ function autoStatus() {
   return last ? `zuletzt automatisch am ${fmtDate(new Date(last), { day: 'numeric', month: 'numeric' })}` : 'automatisch möglich';
 }
 
+/* ---------- Anleitung ---------- */
+
+// Nachbau einer Kurzbefehle-Aktion: Name und die Einstellungen, die man antippen muss
+const tok = (t) => `<span class="sc-tok">${t}</span>`;
+const par = (t) => `<span class="sc-par">${t}</span>`;
+
+function action(icon, color, name, body, how) {
+  return `<li><div class="sc-action"><div class="sc-head"><span class="sc-icon" style="background:${color}">${icon}</span><b>${name}</b></div>
+    ${body ? `<div class="sc-body">${body}</div>` : ''}</div>
+    ${how ? `<div class="small muted sc-how">${how}</div>` : ''}</li>`;
+}
+
+const HOW_FIND = 'Unten ins Suchfeld <b>Health</b> tippen → <b>Health-Beispiele suchen</b>. Dann auf das blaue <b>Typ</b> tippen und den Typ wählen. <b>Filter hinzufügen</b> → <b>Startdatum</b> → <b>ist heute</b>. Ganz unten bei <b>Gruppieren nach</b> → <b>Tag</b>.';
+const HOW_VAR = 'Variablen einsetzen: in den Text tippen, über der Tastatur auf <b>Variable auswählen</b> und dann auf die blaue Blase der passenden Aktion weiter oben tippen.';
+
 function setupSheet() {
   const url = inboxUrl();
+  const send = url
+    ? action('🌐', '#0a84ff', 'Inhalte von URL abrufen',
+      `${tok('URL')} = <span class="sc-url">${esc(url)}</span><br>Methode ${par('POST')} · Anfragetext ${par('JSON')}<br>Feld: Schlüssel ${par('text')} · Typ ${par('Text')} · Wert ${tok('Text')}`,
+      `Suchfeld: <b>URL</b> → <b>Inhalte von URL abrufen</b>. Auf <b>URL</b> tippen und die Adresse einfügen:
+       <button class="btn secondary small" type="button" data-action="health-copy-url" style="margin:6px 0">📋 Adresse kopieren</button><br>
+       Dann auf den kleinen Pfeil <b>›</b> der Aktion tippen: <b>Methode</b> → <b>POST</b>, <b>Anfragetext</b> → <b>JSON</b>, <b>Neues Feld hinzufügen</b> → <b>Text</b>. Als Schlüssel <b>text</b> schreiben, als Wert die Variable <b>Text</b> aus Schritt 4 einsetzen.`)
+    : action('📋', '#8e8e93', 'In Zwischenablage kopieren', `${tok('Text')}`, 'Suchfeld: <b>Zwischenablage</b> → <b>In Zwischenablage kopieren</b>.');
+
   openSheet(`
     <h3>❤️ Apple Health verbinden</h3>
-    <p class="small muted">Das iPhone zählt Schritte und Kalorien auch ohne Apple Watch, und Läufe aus der Fitness-App, Strava & Co. landen ebenfalls in Health. Eine Web-App darf Health aber nicht selbst lesen. Ein Kurzbefehl holt deshalb die Werte des Tages und gibt sie an die App weiter. Die Daten gehen nur an deinen eigenen Firebase-Speicher. Einmal ca. 10 Minuten einrichten:</p>
-    <h2>1. Kurzbefehl anlegen</h2>
-    <ol class="small guide">
-      <li>App <b>Kurzbefehle</b> öffnen → <b>+</b> → oben den Namen <b>${esc(shortcutName())}</b> eingeben.</li>
-      <li>Aktion <b>Health-Beispiele suchen</b> (engl. „Find Health Samples“) hinzufügen: Typ <b>Aktive Energie</b>, Filter <b>Startdatum ist heute</b>, <b>Gruppieren nach: Tag</b>.</li>
-      <li>Dieselbe Aktion nochmal mit Typ <b>Schritte</b> (Startdatum ist heute, gruppiert nach Tag).</li>
-      <li>Nur mit Apple Watch, sonst weglassen: genauso <b>Trainingsminuten</b>, außerdem <b>Ruheherzfrequenz</b> und <b>Herzfrequenzvariabilität</b> (Startdatum ist heute, <b>Neueste zuerst</b>, <b>Limit 1</b>).</li>
-      <li>Für Joggen & Co.: <b>Health-Beispiele suchen</b> mit Typ <b>Trainings</b> (Workouts), Startdatum ist heute. Darunter <b>Wiederholen mit jedem</b>, und darin eine Aktion <b>Text</b>:<br>
-        <code>Workout: [Wiederholungsobjekt] | [Wiederholungsobjekt → Dauer] | [Wiederholungsobjekt → Wert]</code><br>
-        (Variablen über die Leiste über der Tastatur einsetzen, „Dauer“ und „Wert“ durch Antippen der Variable auswählen.)</li>
-      <li>Dann eine Aktion <b>Text</b> mit diesem Inhalt, die Platzhalter durch das Ergebnis der passenden Suche ersetzen (Zeilen ohne Suche einfach löschen):<br>
-        <code>CALI-HEALTH<br>Datum: [Aktuelles Datum]<br>Aktivkalorien: [Aktive Energie]<br>Schritte: [Schritte]<br>Trainingsminuten: [Trainingsminuten]<br>Ruhepuls: [Ruheherzfrequenz]<br>HRV: [Herzfrequenzvariabilität]<br>[Wiederholungsergebnisse]</code></li>
-      <li><b>In Zwischenablage kopieren</b> hinzufügen (für das Holen von Hand).</li>
-      ${url ? `<li>Zum Schluss <b>Inhalte von URL abrufen</b>. Als URL diese Adresse einsetzen:<br><code>${esc(url)}</code>
-        <button class="btn secondary small" type="button" data-action="health-copy-url" style="margin-top:6px">Adresse kopieren</button><br>
-        Dann auf den Pfeil der Aktion tippen: <b>Methode POST</b>, <b>Anfragetext JSON</b>, neues Feld vom Typ <b>Text</b> mit Schlüssel <b>text</b> und als Wert die Variable <b>Text</b> aus dem vorigen Schritt.</li>` : ''}
-      <li>Einmal von Hand starten und den Health-Zugriff erlauben. Fehlen Werte, in der <b>Health-App → Profilbild → Apps → Kurzbefehle</b> alles einschalten.</li>
+    <p class="small muted">Dein iPhone zählt Schritte und Kalorien auch ohne Uhr, Läufe landen ebenfalls in Health. Die App darf Health aber nicht selbst lesen. Dafür baust du einmal einen kleinen <b>Kurzbefehl</b> (ein Mini-Programm in der Kurzbefehle-App von Apple). Er liest die Werte und schickt sie an die App. Dauert ca. 10 Minuten.</p>
+    ${url ? '<p class="small">✅ Gemeinsamer Speicher ist verbunden, die Werte können automatisch kommen.</p>'
+    : '<p class="small sore-note card">⚠️ Für das <b>automatische</b> Übertragen muss die App unter <b>Profil → Gemeinsam planen</b> verbunden sein. Ohne geht es nur von Hand (Kurzbefehl starten, Werte einfügen).</p>'}
+
+    <h2>Teil 1 · Kurzbefehl bauen</h2>
+    <ol class="small guide sc-steps">
+      <li>App <b>Kurzbefehle</b> öffnen (vorinstalliert, sonst gratis im App Store). Unten <b>Kurzbefehle</b>, oben rechts <b>+</b>. Oben auf den Titel tippen → <b>Umbenennen</b> → <b>${esc(shortcutName())}</b>.</li>
+      ${action('❤️', '#ff375f', 'Health-Beispiele suchen', `Typ ${par('Schritte')} · Startdatum ${par('ist heute')} · Gruppieren nach ${par('Tag')}`, HOW_FIND)}
+      ${action('❤️', '#ff375f', 'Health-Beispiele suchen', `Typ ${par('Aktive Energie')} · Startdatum ${par('ist heute')} · Gruppieren nach ${par('Tag')}`, 'Genauso wie eben, nur mit dem Typ <b>Aktive Energie</b>.')}
+      ${action('📝', '#ffcc00', 'Text', `Schritte: ${tok('Health-Beispiele')}<br>Aktivkalorien: ${tok('Health-Beispiele')}`,
+        `Suchfeld: <b>Text</b> → <b>Text</b>. Genau so hineinschreiben. Hinter „Schritte:“ kommt das Ergebnis aus Schritt 2, hinter „Aktivkalorien:“ das aus Schritt 3. ${HOW_VAR}`)}
+      ${send}
+      <li>Fertig gebaut: oben rechts <b>Fertig</b>. Dann den Kurzbefehl einmal antippen, damit er läuft. Beim ersten Mal fragt das iPhone, ob er Health lesen ${url ? 'und etwas senden ' : ''}darf: <b>Erlauben</b>.</li>
     </ol>
-    <h2>2. Jeden Tag automatisch</h2>
-    ${url ? `<ol class="small guide">
-      <li>In Kurzbefehle unten auf <b>Automation</b> → <b>+</b> → <b>Tageszeit</b>, z. B. <b>21:30</b>, <b>Täglich</b>, <b>Sofort ausführen</b> → Weiter → Kurzbefehl <b>${esc(shortcutName())}</b> wählen.</li>
-      <li>Fertig. Die Werte kommen dann jeden Abend in deinem Speicher an, und die App trägt sie beim nächsten Öffnen von selbst ein, auch für mehrere Tage. Workouts wie Joggen werden dabei als „Anderes Training“ eingetragen.</li>
+    ${url ? `<button class="btn secondary block" data-action="health-check">Angekommen? Jetzt prüfen</button>
+    <p class="small" id="health-check-msg"></p>` : ''}
+
+    <h2>Teil 2 · Jeden Abend automatisch</h2>
+    ${url ? `<ol class="small guide sc-steps">
+      <li>In Kurzbefehle unten auf <b>Automation</b> → <b>+</b> (bzw. <b>Neue Automation</b>).</li>
+      <li><b>Tageszeit</b> wählen → <b>21:30</b> (oder wann du abends meist am Handy bist) → <b>Täglich</b>.</li>
+      <li>Unten <b>Sofort ausführen</b> auswählen (sonst fragt das iPhone jedes Mal nach) → <b>Weiter</b>.</li>
+      <li>Den Kurzbefehl <b>${esc(shortcutName())}</b> antippen. Fertig.</li>
     </ol>
-    <p class="small muted">Solange das iPhone gesperrt ist, lässt iOS keinen Zugriff auf Health zu. Wähl deshalb eine Uhrzeit, zu der du das Handy meist sowieso in der Hand hast. Alternativ als Auslöser <b>App → Wird geöffnet</b> mit einer App, die du abends ohnehin nutzt.</p>`
-    : '<p class="small muted">Dafür braucht die App den Firebase-Speicher aus <b>Profil → Gemeinsam planen</b>, in den der Kurzbefehl die Werte schicken kann. Sobald du verbunden bist, steht hier die Adresse für den Kurzbefehl. Bis dahin klappt das Holen von Hand: in der App auf <b>❤️ Health-Werte holen</b> tippen, der Kurzbefehl läuft, du kommst zurück und tippst auf <b>Einfügen</b>.</p>'}
-    <div class="list"><label class="field"><span>Name des Kurzbefehls</span><input id="health-name" value="${esc(shortcutName())}" autocomplete="off"></label></div>
-    <button class="btn block" data-action="health-save-name">Speichern und jetzt testen</button>
-    <button class="btn secondary block" data-action="health-paste-sheet" style="margin-top:8px">Werte einfügen</button>
+    <p class="small muted">Ab jetzt landen die Werte jeden Abend im Speicher. Öffnest du die App, trägt sie alles selbst ein. Wichtig: Ist das iPhone um diese Uhrzeit gesperrt, lässt iOS keinen Zugriff auf Health zu. Nimm also eine Zeit, zu der du es meist in der Hand hast.</p>`
+    : '<p class="small muted">Geht erst, wenn „Gemeinsam planen“ verbunden ist. Bis dahin: in der App auf <b>❤️ Health-Werte holen</b> tippen, der Kurzbefehl läuft, zurück in die App wechseln und <b>Einfügen</b> tippen.</p>'}
+
+    <details class="card small"><summary><b>Extra: Joggen & andere Trainings mitschicken</b></summary>
+      <p>Erst einrichten, wenn der Rest klappt. Diese Aktionen kommen <b>zwischen</b> Schritt 3 und den Text:</p>
+      <ol class="guide sc-steps">
+        ${action('❤️', '#ff375f', 'Health-Beispiele suchen', `Typ ${par('Trainings')} · Startdatum ${par('ist heute')}`, 'Wie oben, Typ <b>Trainings</b> (engl. Workouts). Hier <b>ohne</b> Gruppieren.')}
+        ${action('🔁', '#8e8e93', 'Wiederholen mit jedem Objekt in', `${tok('Health-Beispiele')}`, 'Suchfeld: <b>Wiederholen</b> → <b>Wiederholen mit jedem</b>.')}
+        ${action('📝', '#ffcc00', 'Text (innerhalb von Wiederholen)', `Workout: ${tok('Wiederholungsobjekt')} | ${tok('Dauer')} | ${tok('Wert')}`,
+          'Die Text-Aktion in den Wiederholen-Block ziehen. Für „Dauer“ und „Wert“ jeweils <b>Wiederholungsobjekt</b> einsetzen, die Blase antippen und <b>Dauer</b> bzw. <b>Wert</b> auswählen.')}
+      </ol>
+      <p>Im großen Text (Schritt 4) dann eine neue Zeile mit der Variable ${tok('Wiederholungsergebnisse')} anhängen.</p>
+    </details>
+
+    <details class="card small"><summary><b>Klappt nicht?</b></summary>
+      <ul class="guide">
+        <li>Keine Werte: <b>Health-App → Profilbild oben rechts → Apps → Kurzbefehle</b> → alles einschalten.</li>
+        <li>Kurzbefehl heißt anders: unten den Namen anpassen, sonst findet die App ihn beim Holen von Hand nicht.</li>
+        <li>Schick mir einfach einen Screenshot von deinem Kurzbefehl, dann sage ich dir, was fehlt.</li>
+      </ul>
+    </details>
+
+    <div class="list" style="margin-top:12px"><label class="field"><span>Name des Kurzbefehls</span><input id="health-name" value="${esc(shortcutName())}" autocomplete="off"></label></div>
+    <button class="btn block" data-action="health-save-name">Speichern und Kurzbefehl starten</button>
     <button class="btn ghost block" data-action="close-sheet" style="margin-top:8px">Schließen</button>`);
 }
 
@@ -486,6 +541,24 @@ export const healthActions = {
       el.textContent = 'Kopiert ✓';
     } catch {
       el.textContent = 'Bitte von Hand markieren';
+    }
+  },
+  async 'health-check'(el) {
+    const msg = document.getElementById('health-check-msg');
+    el.disabled = true;
+    let n = 0;
+    try {
+      n = takeEntries(await fetchInbox());
+      if (n) save();
+    } catch {
+      n = -1;
+    }
+    el.disabled = false;
+    if (msg) {
+      msg.textContent = n > 0 ? `✅ Klappt! Werte für ${n === 1 ? 'einen Tag' : `${n} Tage`} übernommen.`
+        : n < 0 ? 'Keine Verbindung zum Speicher. Internet an?'
+          : health().lastAuto ? '✅ Hat schon geklappt, gerade liegt nichts Neues an.'
+            : 'Noch nichts angekommen. Ist der Kurzbefehl einmal gelaufen? Sonst Schritt 5 nochmal prüfen.';
     }
   },
   'health-paste-sheet'() {
