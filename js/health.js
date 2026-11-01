@@ -448,7 +448,7 @@ function action(icon, color, name, body, how) {
     ${how ? `<div class="small muted sc-how">${how}</div>` : ''}</li>`;
 }
 
-const HOW_FIND = 'Unten ins Suchfeld <b>Health</b> tippen → <b>Health-Beispiele suchen</b>. Dann auf das blaue <b>Typ</b> tippen und den Typ wählen. <b>Filter hinzufügen</b> → <b>Startdatum</b> → <b>ist heute</b>. Ganz unten bei <b>Gruppieren nach</b> → <b>Tag</b>.';
+const HOW_FIND = 'Unten ins Suchfeld <b>Health</b> tippen → <b>Health-Beispiele suchen</b>. Dann auf das blaue <b>Typ</b> tippen und den Typ wählen. <b>Filter hinzufügen</b> → <b>Startdatum</b> → <b>ist heute</b>. Ganz unten bei <b>Gruppieren nach</b> → <b>Tag</b>, und <b>Fehlende ausfüllen</b> ausschalten.';
 const HOW_VAR = 'Variablen einsetzen: in den Text tippen, über der Tastatur auf <b>Variable auswählen</b> und dann auf die blaue Blase der passenden Aktion weiter oben tippen.';
 
 function setupSheet() {
@@ -456,7 +456,7 @@ function setupSheet() {
   const send = url
     ? action('🌐', '#0a84ff', 'Inhalte von URL abrufen',
       `${tok('URL')} = <span class="sc-url">${esc(url)}</span><br>Methode ${par('POST')} · Anfragetext ${par('JSON')}<br>Feld: Schlüssel ${par('text')} · Typ ${par('Text')} · Wert ${tok('Text')}`,
-      `Suchfeld: <b>URL</b> → <b>Inhalte von URL abrufen</b>. Auf <b>URL</b> tippen und die Adresse einfügen:
+      `Suchfeld: <b>URL</b> → <b>Inhalte von URL abrufen</b>. Das URL-Feld lange drücken → <b>Einsetzen</b>. Die Adresse muss als normaler Text dastehen, nicht als farbige Blase (sonst schickt der Kurzbefehl an die falsche Stelle):
        <button class="btn secondary small" type="button" data-action="health-copy-url" style="margin:6px 0">📋 Adresse kopieren</button><br>
        Dann auf den kleinen Pfeil <b>›</b> der Aktion tippen: <b>Methode</b> → <b>POST</b>, <b>Anfragetext</b> → <b>JSON</b>, <b>Neues Feld hinzufügen</b> → <b>Text</b>. Als Schlüssel <b>text</b> schreiben, als Wert die Variable <b>Text</b> aus Schritt 4 einsetzen.`)
     : action('📋', '#8e8e93', 'In Zwischenablage kopieren', `${tok('Text')}`, 'Suchfeld: <b>Zwischenablage</b> → <b>In Zwischenablage kopieren</b>.');
