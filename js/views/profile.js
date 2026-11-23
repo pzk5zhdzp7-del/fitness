@@ -104,9 +104,10 @@ export function viewProfile() {
     <h2>Ernährungsplan</h2>
     <div class="list">
       ${toggle('data-profile-bool', 'vegetarian', p.vegetarian, 'Nur vegetarische Gerichte')}
+      ${toggle('data-profile-bool', 'lowHistamine', p.lowHistamine, 'Nur histaminarme Gerichte')}
       ${toggle('data-profile-bool', 'leftovers', p.leftovers, 'Reste-Modus', 'Mittags gibt\'s das Abendessen vom Vortag – halb so oft kochen.')}
     </div>
-    <p class="small muted">Diese beiden Optionen gelten ab dem nächsten neuen Wochenplan.</p>
+    <p class="small muted">Diese Optionen gelten ab dem nächsten neuen Wochenplan.</p>
 
     <h2>Apple Health</h2>
     ${healthSettings()}

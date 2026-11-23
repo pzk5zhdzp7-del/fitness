@@ -28,6 +28,7 @@ const DEFAULTS = {
     goal: 'maintain',
     proteinPerKg: 1.8,
     vegetarian: false,
+    lowHistamine: false,
     leftovers: false,
   },
   settings: { voice: true, cooldown: true },

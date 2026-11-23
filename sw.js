@@ -1,6 +1,6 @@
 // Offline-Cache. Bei jeder Änderung an der App VERSION erhöhen,
 // damit das iPhone die neuen Dateien lädt.
-const VERSION = 'v18';
+const VERSION = 'v19';
 const FILES = [
   './',
   'index.html',

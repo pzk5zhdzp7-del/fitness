@@ -68,7 +68,7 @@ export function slotKind(slot) {
 // Passende Rezepte für eine Mahlzeit; abgewählte nur, wenn sonst nichts übrig bleibt
 export function pool(slot) {
   const s = slotKind(slot);
-  const all = allRecipes().filter((r) => r.slot === s && (!state.profile.vegetarian || r.veg));
+  const all = allRecipes().filter((r) => r.slot === s && (!state.profile.vegetarian || r.veg) && (!state.profile.lowHistamine || r.lowHist));
   const off = blockedRecipes();
   const on = all.filter((r) => !off.has(r.id));
   return on.length ? on : all;

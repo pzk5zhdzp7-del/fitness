@@ -63,6 +63,14 @@ export const INGREDIENTS = {
   salat: { name: 'Blattsalat', kcal: 17, p: 1.3, c: 2, f: 0.2, cat: 'Obst & Gemüse' },
   kartoffeln: { name: 'Kartoffeln', kcal: 77, p: 2, c: 16, f: 0.1, cat: 'Obst & Gemüse' },
   suesskartoffel: { name: 'Süßkartoffeln', kcal: 86, p: 1.6, c: 20, f: 0.1, cat: 'Obst & Gemüse' },
+
+  // vor allem für die histaminarmen Gerichte
+  hirse: { name: 'Hirse', kcal: 360, p: 10.6, c: 69, f: 3.9, cat: 'Brot & Getreide' },
+  pute: { name: 'Putenbrust', kcal: 107, p: 24, c: 0, f: 1, cat: 'Fleisch & Fisch' },
+  frischkaese: { name: 'Frischkäse natur (leicht)', kcal: 150, p: 8.5, c: 4.5, f: 11, cat: 'Kühlregal' },
+  birne: { name: 'Birnen', kcal: 57, p: 0.4, c: 12.4, f: 0.3, cat: 'Obst & Gemüse', piece: 180 },
+  heidelbeeren: { name: 'Heidelbeeren (frisch oder TK)', kcal: 42, p: 0.6, c: 7.4, f: 0.6, cat: 'Obst & Gemüse' },
+  kuerbis: { name: 'Hokkaido-Kürbis', kcal: 45, p: 1.7, c: 9, f: 0.2, cat: 'Obst & Gemüse' },
 };
 
 // Mengen in g bzw. ml für EINE Portion
@@ -77,7 +85,7 @@ export const RECIPES = [
   { id: 'quark-bowl', name: 'Quark-Bowl mit Banane & Erdnussmus', slot: 'breakfast', veg: true, time: 5,
     items: { magerquark: 250, banane: 120, haferflocken: 30, erdnussmus: 15 },
     steps: ['Quark mit einem Schuss Wasser cremig rühren.', 'Banane in Scheiben schneiden, mit Haferflocken darauf geben.', 'Erdnussmus darüber.'] },
-  { id: 'porridge', name: 'Apfel-Zimt-Porridge', slot: 'breakfast', veg: true, time: 10,
+  { id: 'porridge', lowHist: true, name: 'Apfel-Zimt-Porridge', slot: 'breakfast', veg: true, time: 10,
     items: { haferflocken: 70, milch: 250, apfel: 150, mandeln: 15 },
     steps: ['Haferflocken mit Milch aufkochen und 3–5 Min. köcheln.', 'Apfel würfeln und unterrühren, mit Zimt würzen.', 'Gehackte Mandeln darüber streuen.'] },
   { id: 'huettenkaese-brot', name: 'Hüttenkäse-Brote mit Gemüse', slot: 'breakfast', veg: true, time: 5,
@@ -121,12 +129,48 @@ export const RECIPES = [
     items: { skyr: 200, beeren: 100 }, steps: ['Beeren (aufgetaut) über den Skyr geben.'] },
   { id: 'shake', name: 'Protein-Shake mit Banane', slot: 'snack', veg: true, time: 2,
     items: { whey: 30, milch: 300, banane: 120 }, steps: ['Alles in den Mixer oder Shaker, kräftig mixen.'] },
-  { id: 'apfel-mandeln', name: 'Apfel & Mandeln', slot: 'snack', veg: true, time: 1,
+  { id: 'apfel-mandeln', lowHist: true, name: 'Apfel & Mandeln', slot: 'snack', veg: true, time: 1,
     items: { apfel: 150, mandeln: 25 }, steps: ['Einfach so – ideal für unterwegs.'] },
-  { id: 'reiswaffeln', name: 'Reiswaffeln mit Hüttenkäse', slot: 'snack', veg: true, time: 3,
+  { id: 'reiswaffeln', lowHist: true, name: 'Reiswaffeln mit Hüttenkäse', slot: 'snack', veg: true, time: 3,
     items: { reiswaffeln: 30, huettenkaese: 100, gurke: 50 }, steps: ['Reiswaffeln mit Hüttenkäse bestreichen, Gurke darauf.'] },
   { id: 'hummus-sticks', name: 'Hummus mit Gemüsesticks', slot: 'snack', veg: true, time: 5,
     items: { hummus: 60, moehren: 100, paprika: 100 }, steps: ['Möhren und Paprika in Sticks schneiden, in Hummus dippen.'] },
+
+  // Histaminarm: ohne gereiften Käse, Tomaten, Spinat, Avocado, Zitrus, Essig, Sojasauce,
+  // Wurst, Konserven- oder Räucherfisch, Hülsenfrüchte und Hefeextrakt.
+  { id: 'ha-hirse-birne', name: 'Hirse-Porridge mit Birne & Heidelbeeren', slot: 'breakfast', veg: true, lowHist: true, time: 15,
+    items: { hirse: 60, milch: 250, birne: 150, heidelbeeren: 80, magerquark: 100 },
+    steps: ['Hirse in einem Sieb heiß abspülen.', 'Mit der Milch aufkochen und bei kleiner Hitze 10 Min. quellen lassen, dabei ab und zu rühren.', 'Birne würfeln und unterheben, Quark einrühren.', 'Heidelbeeren darüber geben.'] },
+  { id: 'ha-quark-heidel', name: 'Quark mit Heidelbeeren & Haferflocken', slot: 'breakfast', veg: true, lowHist: true, time: 5,
+    items: { magerquark: 250, heidelbeeren: 100, haferflocken: 40, honig: 10 },
+    steps: ['Quark mit einem Schuss Wasser oder Milch cremig rühren.', 'Haferflocken und Heidelbeeren darauf geben.', 'Mit Honig süßen.'] },
+  { id: 'ha-milchreis', name: 'Milchreis mit Birne', slot: 'breakfast', veg: true, lowHist: true, time: 30,
+    items: { reis: 60, milch: 300, magerquark: 100, birne: 150, honig: 10 },
+    steps: ['Reis (am besten Milchreis) mit der Milch aufkochen.', 'Bei kleiner Hitze 25 Min. quellen lassen, oft umrühren.', 'Quark unterrühren, mit Honig süßen.', 'Birne würfeln und darauf geben. Lässt sich am Vorabend kochen und kalt essen.'] },
+
+  { id: 'ha-haehnchen-ofen', name: 'Hähnchen mit Ofenkartoffeln & Möhren', slot: 'main', veg: false, lowHist: true, time: 40,
+    items: { haehnchen: 150, kartoffeln: 300, moehren: 200, olivenoel: 10 },
+    steps: ['Ofen auf 200 °C vorheizen.', 'Kartoffeln vierteln, Möhren in Stifte schneiden, mit der Hälfte des Öls, Salz und Rosmarin oder Thymian mischen, 20 Min. backen.', 'Hähnchen salzen, mit dem Rest-Öl aufs Blech legen.', 'Weitere 15–20 Min. backen, bis das Hähnchen durch ist.'] },
+  { id: 'ha-kuerbis-reis', name: 'Hähnchen-Kürbis-Pfanne mit Reis', slot: 'main', veg: false, lowHist: true, time: 25,
+    items: { haehnchen: 150, reis: 75, kuerbis: 200, zwiebel: 40, olivenoel: 10 },
+    steps: ['Reis nach Packung kochen.', 'Kürbis entkernen und mit Schale würfeln, Zwiebel würfeln.', 'Hähnchen in Streifen in Öl anbraten und herausnehmen.', 'Kürbis und Zwiebel 8–10 Min. braten, bis der Kürbis weich ist. Hähnchen dazu, salzen, mit frischer Petersilie servieren.'] },
+  { id: 'ha-pute-pasta', name: 'Puten-Zucchini-Pasta mit Frischkäsesoße', slot: 'main', veg: false, lowHist: true, time: 20,
+    items: { nudeln: 100, pute: 120, zucchini: 200, frischkaese: 50, olivenoel: 5 },
+    steps: ['Nudeln kochen, eine Tasse Kochwasser aufheben.', 'Pute in Streifen in Öl anbraten.', 'Zucchini würfeln und 5 Min. mitbraten.', 'Frischkäse mit etwas Nudelwasser einrühren, salzen und mit den Nudeln mischen. Basilikum passt gut.'] },
+  { id: 'ha-rind-suesskartoffel', name: 'Rinderhack-Süßkartoffel-Pfanne mit Brokkoli', slot: 'main', veg: false, lowHist: true, time: 30,
+    items: { rinderhack: 125, suesskartoffel: 250, brokkoli: 150, zwiebel: 40, olivenoel: 5 },
+    steps: ['Hack am Kauftag verarbeiten.', 'Süßkartoffel klein würfeln und in Öl mit Deckel 10 Min. braten.', 'Hack und Zwiebel dazu und krümelig braten.', 'Brokkoli-Röschen und einen Schuss Wasser dazu, 5 Min. mit Deckel garen. Salzen, mit Petersilie servieren.'] },
+  { id: 'ha-hirse-gemuese', name: 'Hirse-Gemüse-Pfanne mit Hüttenkäse', slot: 'main', veg: true, lowHist: true, time: 25,
+    items: { hirse: 80, zucchini: 150, moehren: 100, brokkoli: 100, huettenkaese: 150, olivenoel: 10 },
+    steps: ['Hirse heiß abspülen und in der doppelten Menge Salzwasser 10 Min. köcheln, dann quellen lassen.', 'Möhren und Zucchini würfeln, Brokkoli in Röschen teilen, in Öl 8 Min. braten.', 'Hirse unterheben und salzen.', 'Mit Hüttenkäse und frischen Kräutern servieren.'] },
+  { id: 'ha-pellkartoffeln', name: 'Pellkartoffeln mit Kräuterquark & Gurke', slot: 'main', veg: true, lowHist: true, time: 25,
+    items: { kartoffeln: 350, magerquark: 250, gurke: 150, olivenoel: 10 },
+    steps: ['Kartoffeln mit Schale in Salzwasser 20 Min. kochen.', 'Quark mit Öl, etwas Wasser, Salz und frischen Kräutern (Schnittlauch, Petersilie, Dill) glatt rühren.', 'Gurke in Scheiben schneiden.', 'Alles zusammen servieren.'] },
+
+  { id: 'ha-quark-birne', name: 'Quark mit Birne', slot: 'snack', veg: true, lowHist: true, time: 3,
+    items: { magerquark: 200, birne: 150 }, steps: ['Birne würfeln und unter den cremig gerührten Quark heben.'] },
+  { id: 'ha-gemuese-quark', name: 'Gemüsesticks mit Kräuterquark', slot: 'snack', veg: true, lowHist: true, time: 5,
+    items: { moehren: 100, gurke: 100, magerquark: 150 }, steps: ['Möhren und Gurke in Sticks schneiden.', 'Quark mit Salz und frischen Kräutern verrühren und dazu dippen.'] },
 ];
 
 // Eigene Rezepte und Zutaten, befüllt von recipes.js (lokal oder aus dem gemeinsamen Plan)

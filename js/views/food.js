@@ -71,9 +71,12 @@ function plan() {
 
 function recipes() {
   const veg = state.profile.vegetarian;
+  const hist = ui.recipeGroup === 'hist';
   const others = new Set(isLinked() ? othersOff() : []);
+  const groupTab = (v, label) => `<button class="${(ui.recipeGroup || 'all') === v ? 'on' : ''}" data-action="recipe-group" data-v="${v}">${label}</button>`;
+  const groupTabs = `<div class="daytabs small-tabs">${groupTab('all', 'Alle Rezepte')}${groupTab('hist', '🌿 Histaminarm')}</div>`;
   const groups = KINDS.map((k) => {
-    const rows = allRecipes().filter((r) => r.slot === k.slot).map((r) => {
+    const rows = allRecipes().filter((r) => r.slot === k.slot && (!hist || r.lowHist)).map((r) => {
       const off = isOff(r.id);
       const m = recipeMacros(r);
       const pills = [
@@ -84,14 +87,22 @@ function recipes() {
       return `<div class="row ex-row ${off || (veg && !r.veg) ? 'off' : ''}">
         <button class="grow plain ex-name" data-action="recipe" data-id="${r.id}">
           <div>${esc(r.name)} ${pills}</div>
-          <div class="small muted">${r.time} Min · ${n0(m.kcal)} kcal · ${n0(m.p)} g Eiweiß${r.veg ? ' · vegetarisch' : ''}</div></button>
+          <div class="small muted">${r.time} Min · ${n0(m.kcal)} kcal · ${n0(m.p)} g Eiweiß${r.veg ? ' · vegetarisch' : ''}${r.lowHist && !hist ? ' · histaminarm' : ''}</div></button>
         <input type="checkbox" class="switch" data-action="toggle-recipe" data-id="${r.id}" ${off ? '' : 'checked'} aria-label="${esc(r.name)} im Wochenplan">
       </div>`;
     }).join('');
-    return `<h2>${k.label}</h2><div class="list">${rows}</div>`;
+    return rows ? `<h2>${k.label}</h2><div class="list">${rows}</div>` : '';
   }).join('');
 
+  const histInfo = hist ? `
+    <div class="card small">Gerichte ohne gereiften Käse, Tomaten, Spinat, Avocado, Zitrusfrüchte, Essig, Sojasauce, Wurst, Konserven- oder Räucherfisch und Hülsenfrüchte. Fleisch möglichst frisch kaufen und am selben Tag zubereiten, Reste nicht lange aufheben. Würzen am besten mit Salz und frischen Kräutern statt Chili, Curry oder Paprikapulver. Wie viel Histamin vertragen wird, ist sehr individuell.</div>
+    <div class="list"><label class="check-row"><span class="grow">Nur histaminarme Gerichte im Wochenplan<div class="small muted">Gilt ab dem nächsten neuen Wochenplan.</div></span>
+      <input type="checkbox" class="switch" data-profile-bool="lowHistamine" ${state.profile.lowHistamine ? 'checked' : ''}></label></div>
+    <button class="btn secondary block" data-action="new-plan">Neuen Wochenplan erstellen</button>` : '';
+
   return `
+    ${groupTabs}
+    ${histInfo}
     <p class="small muted" style="margin-top:0">Tippe auf ein Gericht für Zutaten und Zubereitung. Mit dem Schalter legst du fest, ob es im Wochenplan vorkommen darf.${isLinked() ? ' Im gemeinsamen Plan landen nur Gerichte, die keiner von euch abgewählt hat. Eigene Rezepte sehen beide Apps.' : ''} Nährwerte gelten für eine Grundportion.</p>
     <button class="btn block" data-action="rc-new">＋ Eigenes Rezept</button>
     ${groups}`;
@@ -106,7 +117,7 @@ function showRecipe(dayIdx, id) {
   const custom = isCustom(id);
   openSheet(`
     <h3>${esc(r.name)}</h3>
-    <div class="small muted">${r.time} Min${r.veg ? ' · vegetarisch' : ''}${custom ? ' · eigenes Rezept' : ''} · 1 Portion (×${scale.toLocaleString('de-DE')})</div>
+    <div class="small muted">${r.time} Min${r.veg ? ' · vegetarisch' : ''}${r.lowHist ? ' · histaminarm' : ''}${custom ? ' · eigenes Rezept' : ''} · 1 Portion (×${scale.toLocaleString('de-DE')})</div>
     <div class="card macros" style="margin-top:12px">
       <div><b>${n0(m.kcal)}</b><span>kcal</span></div>
       <div><b>${n0(m.p)} g</b><span>Eiweiß</span></div>
@@ -173,6 +184,7 @@ function recipeEditor(r = null, copy = false) {
         <label class="field"><span>Mahlzeit</span><select name="rc-slot">${KINDS.map((k) => `<option value="${k.slot}" ${k.slot === kind ? 'selected' : ''}>${k.label}</option>`).join('')}</select></label>
         <label class="field"><span>Zubereitungszeit in Minuten</span><input name="rc-time" type="text" inputmode="numeric" value="${r?.time ?? 20}"></label>
         <label class="check-row"><span class="grow">Vegetarisch</span><input type="checkbox" class="switch" name="rc-veg" ${r?.veg ? 'checked' : ''}></label>
+        <label class="check-row"><span class="grow">Histaminarm</span><input type="checkbox" class="switch" name="rc-hist" ${r?.lowHist ? 'checked' : ''}></label>
       </div>
       <h2>Zutaten für 1 Portion</h2>
       <p class="small muted">Menge in g bzw. ml. Die App passt die Portion später an euer Kalorienziel an.</p>
@@ -222,6 +234,7 @@ export function submitRecipe(form) {
     name,
     slot: f('slot').value,
     veg: f('veg').checked,
+    lowHist: f('hist').checked,
     time: Math.max(1, Math.round(num(f('time').value)) || 20),
     items,
     steps: f('steps').value.split('\n').map((s) => s.trim()).filter(Boolean),
@@ -307,6 +320,10 @@ function shopping() {
 export const foodActions = {
   'food-tab'(el) {
     ui.foodTab = el.dataset.v;
+    rerender();
+  },
+  'recipe-group'(el) {
+    ui.recipeGroup = el.dataset.v;
     rerender();
   },
   'food-day'(el) {
